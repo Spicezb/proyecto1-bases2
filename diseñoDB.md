@@ -14,8 +14,8 @@ A continuación se presenta el diseño de la base de datos relacional del proyec
 
 ### clinics
 - clinicID SERIAL PK
-- name varchar(100) NOT NULL
-- clinicTimeZone varchar(50) NOT NULL
+- name VARCHAR(100) NOT NULL
+- clinicTimeZone VARCHAR(50) NOT NULL
 - auditPersonID INT FK (users) NOT NULL
 - createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
 - updatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -23,33 +23,29 @@ A continuación se presenta el diseño de la base de datos relacional del proyec
 
 ### users
 - userId SERIAL PK
-- providerId varchar(255) UNIQUE NOT NULL     esto hay que verificarlo
+- providerId VARCHAR(255) UNIQUE NOT NULL     esto hay que verificarlo
 - clinicId INT FK (clinics)
 - roleID INT FK (roles) NOT NULL
-- identification varchar(12) UNIQUE NOT NULL
-- name varchar(25) NOT NULL
-- lastname varchar(25) NOT NULL
-- email varchar(100) UNIQUE NOT NULL
-- phone varchar(20)
+- identification VARCHAR(12) UNIQUE NOT NULL
+- name VARCHAR(25) NOT NULL
+- lastname VARCHAR(25) NOT NULL
+- email VARCHAR(100) UNIQUE NOT NULL
+- phone VARCHAR(20)
 - createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
 - updatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
 - isActive BOOLEAN NOT NULL DEFAULT TRUE
 
 ### specialties
 - specialtyID SERIAL PK
-- name varchar(50) UNIQUE NOT NULL
-- description varchar(200)
+- name VARCHAR(50) UNIQUE NOT NULL
+- description VARCHAR(200)
 - createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
 - updatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
 - isActive BOOLEAN NOT NULL DEFAULT TRUE
 
 ### professionals
-
-RF2
-
 - professionalId SERIAL PK
-- userID INT FK (users) UNIQUE NOT NULL
-- licenseId varchar(15) UNIQUE NOT NULL
+- licenseId VARCHAR(15) UNIQUE NOT NULL
 - auditPersonID INT FK (users) NOT NULL
 - createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
 - updatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -66,10 +62,8 @@ RF2
 - UNIQUE (professionalId, specialtyID)
 
 ### clinicProfessionals
-
-Relación de los profesionales con las clínicas, hay que volver a pensar esto pensando en RF2
-
 - clinicProfessionalId SERIAL PK
+- userId INT FK (users) UNIQUE NOT NULL
 - clinicID INT FK (clinics) NOT NULL
 - professionalId INT FK (professionals) NOT NULL
 - auditPersonID INT FK (users) NOT NULL
@@ -83,9 +77,9 @@ Relación de los profesionales con las clínicas, hay que volver a pensar esto p
 La info acá es general y no sensible
 
 - patientID SERIAL PK
-- identification varchar(12) UNIQUE NOT NULL
-- name varchar(25) NOT NULL
-- lastname varchar(25) NOT NULL
+- identification VARCHAR(12) UNIQUE NOT NULL
+- name VARCHAR(25) NOT NULL
+- lastname VARCHAR(25) NOT NULL
 - birthDate DATE NOT NULL
 - auditPersonID INT FK (users) NOT NULL
 - createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -99,8 +93,8 @@ El email y el phone el paciente se lo brinda a cada clínica, esta sí es info s
 - clinicPatientID SERIAL PK
 - clinicID INT FK (clinics) NOT NULL
 - patientID INt FK (patients) NOT NULL
-- email varchar(100)               
-- phone varchar(20) 
+- email VARCHAR(100)               
+- phone VARCHAR(20) 
 - auditPersonID INT FK (users) NOT NULL
 - createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
 - updatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -109,7 +103,7 @@ El email y el phone el paciente se lo brinda a cada clínica, esta sí es info s
 
 ### services
 - serviceId SERIAL PK
-- name varchar(50) UNIQUE NOT NULL
+- name VARCHAR(50) UNIQUE NOT NULL
 - specialtyId INT FK (specialties) NOT NULL
 - createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
 - updatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -127,12 +121,18 @@ El email y el phone el paciente se lo brinda a cada clínica, esta sí es info s
 - UNIQUE (clinicID, serviceID)
 
 ### clinicProfessionalServices
-
-Esto depende de la desición que tomemos sobre RF2
+- clinicProfessionalServiceId SERIAL PK
+- clinicProfessionalId INT FK (clinicProfessionals) NOT NULL
+- clinicServiceId INT FK (clinicServices) NOT NULL
+- auditPersonID INT FK (users) NOT NULL
+- createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
+- updatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
+- isActive BOOLEAN NOT NULL DEFAULT TRUE
+- UNIQUE (clinicServiceId, clinicProfessionalId)
 
 ### professionalSchedules
 - professionalScheduleID SERIAL PK
-- professionalID INT FK (professionals) NOT NULL               RF2
+- clinicProfessionalId INT FK (clinicProfessionals) NOT NULL
 - day INT NOT NULL
 - startTime TIME NOT NULL
 - endTime TIME NOT NULL
@@ -142,32 +142,67 @@ Esto depende de la desición que tomemos sobre RF2
 
 ### appointmentStatuses
 - appointmentStatusId SERIAL PK
-- name varchar(12) UNIQUE NOT NULL
-- description varchar(100)
+- name VARCHAR(12) UNIQUE NOT NULL
+- description VARCHAR(100)
 - isActive BOOLEAN NOT NULL DEFAULT TRUE
 
 ### appointment 
 - appointmentId SERIAL PK
 - clinicPatientId INT FK (clinicPatients) NOT NULL
 - clinicId INT FK (clinics) NOT NULL
-- professionalID INT FK (professionals) NOT NULL                 RF2
+- clinicProfessionalId INT FK (clinicProfessionals) NOT NULL
 - clinicServiceId INT FK (clinicServices) NOT NULL
 - appointmentStatusId INT FK (appointmentStatuses) NOT NULL
 - date TIMESTAMPTZ NOT NULL
+- auditPersonID INT FK (users) NOT NULL
 - createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
 - updatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
+- isBlocked BOOLEAN NOT NULL DEFAULT FALSE
 
 ### clinicalNotes
 - clinicalNoteID SERIAL PK
 - appointmentID INT FK (appointments) UNIQUE NOT NULL
 - content TEXT NOT NULL
-- professionalID INT FK (professionals) NOT NULL
+- clinicProfessionalId INT FK (clinicProfessionals) NOT NULL
 - createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
 - updatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
 - isActive BOOLEAN NOT NULL DEFAULT TRUE
 
-TO DOS:
+### scheduleBlocks
+- scheduleBlockId SERIAL PK
+- clinicProfessionalId INT FK (clinicProfessionals) NOT NULL
+- startDateTime TIMESTAMPTZ NOT NULL
+- endDateTime TIMESTAMPTZ NOT NULL
+- reason VARCHAR(200)
+- auditPersonID INT FK (users) NOT NULL
+- createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
+- updatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
+- isActive BOOLEAN NOT NULL DEFAULT TRUE
 
-logs de auditoría / bitácora
-bloqueos de agenda
-discutir bien lo de RF2
+### auditActions
+- auditActionID SERIAL PK
+- name VARCHAR(30) UNIQUE NOT NULL
+- description VARCHAR(100)
+- isActive BOOLEAN NOT NULL DEFAULT TRUE
+
+### auditResults
+- auditResultID SERIAL PK
+- name VARCHAR(30) UNIQUE NOT NULL
+- description VARCHAR(100)
+- isActive BOOLEAN NOT NULL DEFAULT TRUE
+
+### auditTables
+- auditTableId SERIAL PK
+- name VARCHAR(30) UNIQUE NOT NULL
+- isActive BOOLEAN NOT NULL DEFAULT TRUE
+
+### auditLogs
+- auditLogID SERIAL PK
+- clinicId INT FK (clinics) NOT NULL
+- auditPersonID INT FK (users) NOT NULL
+- auditActionID INT FK (auditActions) NOT NULL
+- auditTableID INT FK (auditTables) NOT NULL
+- auditRecordID INT NOT NULL
+- auditResultID INT FK (auditResults) NOT NULL
+- clinicPatientID INT FK (clinicPatients) 
+- createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
