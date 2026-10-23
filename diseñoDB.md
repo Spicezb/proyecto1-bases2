@@ -2,7 +2,7 @@
 
 A continuación se presenta el diseño de la base de datos relacional del proyecto, en el cual se utilizará PostgreSQL como motor de base de datos.
 
-## Tablas
+## Tables
 
 ### roles
 - roleID SERIAL PK
@@ -146,7 +146,7 @@ El email y el phone el paciente se lo brinda a cada clínica, esta sí es info s
 - description VARCHAR(100)
 - isActive BOOLEAN NOT NULL DEFAULT TRUE
 
-### appointment 
+### appointments
 - appointmentId SERIAL PK
 - clinicPatientId INT FK (clinicPatients) NOT NULL
 - clinicId INT FK (clinics) NOT NULL
@@ -154,6 +154,7 @@ El email y el phone el paciente se lo brinda a cada clínica, esta sí es info s
 - clinicServiceId INT FK (clinicServices) NOT NULL
 - appointmentStatusId INT FK (appointmentStatuses) NOT NULL
 - date TIMESTAMPTZ NOT NULL
+- cancellationReason VARCHAR(250)
 - auditPersonID INT FK (users) NOT NULL
 - createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
 - updatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -206,3 +207,16 @@ El email y el phone el paciente se lo brinda a cada clínica, esta sí es info s
 - auditResultID INT FK (auditResults) NOT NULL
 - clinicPatientID INT FK (clinicPatients) 
 - createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+## Índices
+
+- appointments: clinicProfessionalId, date
+- appointments: clinicId, date 
+- appointments: clinicPatientId, date 
+- appointments: clinicId, date, appointmentStatusId 
+- professionalSchedules: clinicProfessionalId, day
+- scheduleBlocks: clinicProfessionalId, startDateTime
+- clinicProfessionalServices: clinicProfessionalId, clinicServiceId
+- auditLogs: auditPersonID, createdAt 
+- auditLogs: clinicPatientId, createdAt 
+- auditLogs: createdAt 
