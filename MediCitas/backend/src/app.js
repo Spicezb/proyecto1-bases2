@@ -4,6 +4,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const pacientesRoutes = require('./rutas/pacientes_rts');
+const serviciosRoutes = require('./rutas/servicios_rts');
+
+app.use(express.json());
+app.use('/api/servicios', serviciosRoutes);
 
 app.use(express.json());
 app.use('/api/pacientes', pacientesRoutes);

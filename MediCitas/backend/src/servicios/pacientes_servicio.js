@@ -1,4 +1,3 @@
-
 const pacientesRepositorio = require('../repositorios/pacientes_repos');
 
 // Validar los datos de un paciente (POST y PUT)
