@@ -1,61 +1,126 @@
-// Datos provisionales mientras se conecta PostgreSQL
-const pacientes = [
-    { id: 1, nombre: 'Ana', apellido: 'Rodríguez' },
-    { id: 2, nombre: 'Carlos', apellido: 'Mora' }
-];
 
-// Obtener todos los pacientes
-function obtenerPacientes() {
-    return pacientes;
-}
+const pacientesRepositorio = require('../repositorios/pacientes_repos');
 
-// Buscar un paciente por ID
-function obtenerPacientePorId(id) {
-    return pacientes.find(paciente => paciente.id === Number(id));
-}
+// Validar los datos de un paciente (POST y PUT)
+function validarDatosPaciente(datos) {
+    const {
+        identificacion,
+        nombre,
+        apellido,
+        fechaNacimiento,
+        correo,
+        telefono
+    } = datos || {};
 
-// Registrar un nuevo paciente
-function registrarPaciente(datos) {
-    const { nombre, apellido } = datos;
-
-    if (typeof nombre !== 'string' || !nombre.trim() ||
-        typeof apellido !== 'string' || !apellido.trim()) {
+    // Validar campos obligatorios
+    if (
+        typeof identificacion !== 'string' ||
+        !identificacion.trim() ||
+        identificacion.trim().length > 12 ||
+        typeof nombre !== 'string' ||
+        !nombre.trim() ||
+        nombre.trim().length > 25 ||
+        typeof apellido !== 'string' ||
+        !apellido.trim() ||
+        apellido.trim().length > 25 ||
+        typeof fechaNacimiento !== 'string'
+    ) {
         return {
-            error: 'El nombre y el apellido son obligatorios.'
-        };
-    }
-    const nuevoPaciente = {
-        id: pacientes.length + 1,
-        nombre: nombre.trim(),
-        apellido: apellido.trim()
-    };
-    pacientes.push(nuevoPaciente);
-    return { paciente: nuevoPaciente };
-}
-
-// Actualizar un paciente existente
-function actualizarPaciente(id, datos) {
-    const paciente = pacientes.find(p => p.id === Number(id));
-
-    if (!paciente) {
-        return {
-            error: 'Paciente no encontrado.',
-            status: 404
-        };
-    }
-
-    const { nombre, apellido } = datos;
-
-    if (typeof nombre !== 'string' || !nombre.trim() ||
-        typeof apellido !== 'string' || !apellido.trim()) {
-        return {
-            error: 'El nombre y el apellido son obligatorios.',
+            error: 'Los datos obligatorios son inválidos.',
             status: 400
         };
     }
 
-    paciente.nombre = nombre.trim();
-    paciente.apellido = apellido.trim();
+    // Validar fecha de nacimiento
+    const fecha = new Date(fechaNacimiento);
+
+    if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(fechaNacimiento) ||
+        Number.isNaN(fecha.getTime()) ||
+        fecha.toISOString().slice(0, 10) !== fechaNacimiento ||
+        fecha > new Date()
+    ) {
+        return {
+            error: 'La fecha de nacimiento no es válida.',
+            status: 400
+        };
+    }
+
+    // Validar campos opcionales
+    if (
+        (correo != null &&
+            (typeof correo !== 'string' || correo.length > 100)) ||
+        (telefono != null &&
+            (typeof telefono !== 'string' || telefono.length > 20))
+    ) {
+        return {
+            error: 'Correo o teléfono inválido.',
+            status: 400
+        };
+    }
+
+    // Devolver datos limpios y validados
+    return {
+        datos: {
+            identificacion: identificacion.trim(),
+            nombre: nombre.trim(),
+            apellido: apellido.trim(),
+            fechaNacimiento,
+            correo: correo ?? null,
+            telefono: telefono ?? null
+        }
+    };
+}
+
+// Obtener pacientes desde PostgreSQL
+async function obtenerPacientes(clinicId) {
+    return await pacientesRepositorio.obtenerPacientes(clinicId);
+}
+
+// Buscar un paciente por ID desde PostgreSQL
+async function obtenerPacientePorId(id, clinicId) {
+    return await pacientesRepositorio.obtenerPacientePorId(id, clinicId);
+}
+
+// Registrar paciente
+async function registrarPaciente(datos, clinicId) {
+    const validacion = validarDatosPaciente(datos);
+
+    if (validacion.error) {
+        return validacion;
+    }
+
+    const paciente = await pacientesRepositorio.registrarPaciente(
+        validacion.datos,
+        clinicId
+    );
+
+    return { paciente };
+}
+
+// Actualizar paciente
+async function actualizarPaciente(id, datos, clinicId) {
+    if (
+        !/^[1-9]\d*$/.test(String(id)) ||
+        !Number.isSafeInteger(Number(id))
+    ) {
+        return {
+            error: 'El ID del paciente debe ser un entero positivo.',
+            status: 400
+        };
+    }
+
+    const validacion = validarDatosPaciente(datos);
+
+    if (validacion.error) {
+        return validacion;
+    }
+
+    const paciente = await pacientesRepositorio.actualizarPaciente(
+        id,
+        validacion.datos,
+        clinicId
+    );
 
     return { paciente };
 }
