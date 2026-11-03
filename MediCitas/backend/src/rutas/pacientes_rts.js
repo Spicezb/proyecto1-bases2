@@ -6,15 +6,24 @@ const pacientesService = require('../servicios/pacientes_servicio');
 router.get('/', async (req, res) => {
     try {
         const clinicId = 1; // Temporal para pruebas locales
-        const pacientes = await pacientesService.obtenerPacientes(clinicId);
+        const auditPersonId = 4; //Temporal para pruebas locales
+
+        const pacientes = await pacientesService.obtenerPacientes(clinicId,auditPersonId);
 
         res.status(200).json(pacientes);
     } catch (error) {
         console.error('Error al consultar pacientes:', error);
 
-        res.status(500).json({
+        if (error.message.includes('Acceso denegado')) {
+            return res.status(403).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+
+        return res.status(500).json({
             status: 'error',
-            message: 'Error al consultar pacientes.'
+            message: 'Error interno del servidor.'
         });
     }
 });
@@ -24,6 +33,7 @@ router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const clinicId = 1; // Temporal para pruebas locales
+        const auditPersonId = 4; //Temporal para pruebas locales
 
         if (!/^[1-9]\d*$/.test(id)) {
             return res.status(400).json({
@@ -33,7 +43,8 @@ router.get('/:id', async (req, res) => {
         }
         const paciente = await pacientesService.obtenerPacientePorId(
             id,
-            clinicId
+            clinicId,
+            auditPersonId
         );
 
         if (!paciente) {
@@ -47,22 +58,30 @@ router.get('/:id', async (req, res) => {
     } catch (error) {
         console.error('Error al consultar paciente:', error);
 
-        res.status(500).json({
+        if (error.message.includes('Acceso denegado')) {
+            return res.status(403).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+
+        return res.status(500).json({
             status: 'error',
             message: 'Error interno del servidor.'
         });
     }
 });
 
-
 // POST /api/pacientes - Registrar paciente
 router.post('/', async (req, res) => {
     try {
         const clinicId = 1; //Temporal para pruebas locales
+        const auditPersonId = 7; //Temporal para pruebas locales
 
         const resultado = await pacientesService.registrarPaciente(
             req.body,
-            clinicId
+            clinicId,
+            auditPersonId
         );
         if (resultado.error) {
             return res.status(resultado.status).json({
@@ -73,15 +92,29 @@ router.post('/', async (req, res) => {
         res.status(201).json(resultado.paciente);
 
     } catch (error) {
-        console.error('Error al registrar paciente:', error);
-        if (error.status === 409 || error.code === '23505') {
+        console.error('Error al consultar pacientes:', error);
+
+        if (
+            error.code === '23505' ||
+            error.message.includes('ya se encuentra registrado') ||
+            error.message.includes('identificación ya existe')
+        ) {
             return res.status(409).json({
                 status: 'error',
                 message: error.message
             });
         }
 
-        res.status(500).json({
+        if (
+            error.message.includes('Solo recepción')
+        ) {
+            return res.status(403).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+
+        return res.status(500).json({
             status: 'error',
             message: 'Error interno del servidor.'
         });
@@ -93,10 +126,13 @@ router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const clinicId = 1; //Temporal para desarrollo local
+        const auditPersonId = 7; //Temporal para pruebas locales
+
         const resultado = await pacientesService.actualizarPaciente(
             id,
             req.body,
-            clinicId
+            clinicId,
+            auditPersonId
         );
         if (resultado.error) {
             return res.status(resultado.status).json({
@@ -107,18 +143,31 @@ router.put('/:id', async (req, res) => {
         res.status(200).json(resultado.paciente);
     } catch (error) {
         console.error('Error al actualizar paciente:', error);
-        if (error.status === 404 || error.status === 409) {
-            return res.status(error.status).json({
+
+        if (
+            error.code === '23505' ||
+            error.message.includes('identificación')
+        ) {
+            return res.status(409).json({
                 status: 'error',
                 message: error.message
             });
         }
-        if (error.code === '23505') {
-            return res.status(409).json({
+
+        if (error.message.includes('Solo recepción')) {
+            return res.status(403).json({
                 status: 'error',
-                message: 'La identificación ya está registrada.'
+                message: error.message
             });
         }
+
+        if (error.message.includes('Paciente no encontrado')) {
+            return res.status(404).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+
         return res.status(500).json({
             status: 'error',
             message: 'Error interno del servidor.'

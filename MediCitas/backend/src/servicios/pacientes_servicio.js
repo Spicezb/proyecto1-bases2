@@ -72,17 +72,17 @@ function validarDatosPaciente(datos) {
 }
 
 // Obtener pacientes desde PostgreSQL
-async function obtenerPacientes(clinicId) {
-    return await pacientesRepositorio.obtenerPacientes(clinicId);
+async function obtenerPacientes(clinicId,auditPersonId) {
+    return await pacientesRepositorio.obtenerPacientes(clinicId,auditPersonId);
 }
 
 // Buscar un paciente por ID desde PostgreSQL
-async function obtenerPacientePorId(id, clinicId) {
-    return await pacientesRepositorio.obtenerPacientePorId(id, clinicId);
+async function obtenerPacientePorId(id, clinicId,auditPersonId) {
+    return await pacientesRepositorio.obtenerPacientePorId(id, clinicId,auditPersonId);
 }
 
 // Registrar paciente
-async function registrarPaciente(datos, clinicId) {
+async function registrarPaciente(datos, clinicId,auditPersonId) {
     const validacion = validarDatosPaciente(datos);
 
     if (validacion.error) {
@@ -91,14 +91,15 @@ async function registrarPaciente(datos, clinicId) {
 
     const paciente = await pacientesRepositorio.registrarPaciente(
         validacion.datos,
-        clinicId
+        clinicId,
+        auditPersonId
     );
 
     return { paciente };
 }
 
 // Actualizar paciente
-async function actualizarPaciente(id, datos, clinicId) {
+async function actualizarPaciente(id, datos, clinicId,auditPersonId) {
     if (
         !/^[1-9]\d*$/.test(String(id)) ||
         !Number.isSafeInteger(Number(id))
@@ -118,7 +119,8 @@ async function actualizarPaciente(id, datos, clinicId) {
     const paciente = await pacientesRepositorio.actualizarPaciente(
         id,
         validacion.datos,
-        clinicId
+        clinicId,
+        auditPersonId
     );
 
     return { paciente };
