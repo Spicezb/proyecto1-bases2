@@ -1,17 +1,7 @@
 const serviciosRepositorio = require('../repositorios/servicios_repos');
 
-//Obtener todos los servicios médicos
-async function obtenerServicios(clinicId) {
-    return await serviciosRepositorio.obtenerServicios(clinicId);
-}
-
-//Obtener un servicio médico por ID
-async function obtenerServicioPorId(id, clinicId) {
-    return await serviciosRepositorio.obtenerServicioPorId(id, clinicId);
-}
-
-//Registrar servicio médico
-async function registrarServicio(datos, clinicId) {
+// Validar datos para crear un servicio médico
+function validarDatosCreacion(datos) {
     const { nombre, especialidadId, duracion } = datos || {};
 
     if (
@@ -20,103 +10,156 @@ async function registrarServicio(datos, clinicId) {
         nombre.trim().length > 50
     ) {
         return {
-            error: 'El nombre del servicio es inválido.',
+            error: 'El nombre del servicio debe ser una cadena no vacía de máximo 50 caracteres.',
             status: 400
         };
     }
 
-    if (
-        !Number.isSafeInteger(especialidadId) ||
-        especialidadId <= 0
-    ) {
+    if (!Number.isSafeInteger(especialidadId) || especialidadId <= 0) {
         return {
-            error: 'La especialidad debe tener un ID válido.',
+            error: 'La especialidad debe tener un ID entero positivo válido.',
             status: 400
         };
     }
 
-    if (
-        !Number.isSafeInteger(duracion) ||
-        duracion <= 0
-    ) {
+    if (!Number.isSafeInteger(duracion) || duracion <= 0) {
         return {
-            error: 'La duración debe ser un entero positivo.',
+            error: 'La duración debe ser un número entero positivo mayor a cero (en minutos).',
             status: 400
         };
     }
 
-    const servicio = await serviciosRepositorio.registrarServicio({
-        nombre: nombre.trim(),
-        especialidadId,
-        duracion
-    }, clinicId);
+    return {
+        datos: {
+            nombre: nombre.trim(),
+            especialidadId,
+            duracion
+        }
+    };
+}
+
+// Validar datos para actualizar un servicio médico
+function validarDatosActualizacion(datos) {
+    const { duracion, activo } = datos || {};
+
+    if (!Number.isSafeInteger(duracion) || duracion <= 0) {
+        return {
+            error: 'La duración debe ser un número entero positivo mayor a cero (en minutos).',
+            status: 400
+        };
+    }
+
+    if (activo !== undefined && typeof activo !== 'boolean') {
+        return {
+            error: 'El campo activo debe ser un valor booleano.',
+            status: 400
+        };
+    }
+
+    return {
+        datos: {
+            duracion,
+            activo: activo !== undefined ? activo : true
+        }
+    };
+}
+
+// Obtener todos los servicios médicos
+async function obtenerServicios(clinicId, auditPersonId) {
+    const servicios = await serviciosRepositorio.obtenerServicios(clinicId, auditPersonId);
+    return { servicios };
+}
+
+// Obtener un servicio médico por ID
+async function obtenerServicioPorId(id, clinicId, auditPersonId) {
+    if (!/^[1-9]\d*$/.test(String(id))) {
+        return {
+            error: 'El ID del servicio debe ser un entero positivo.',
+            status: 400
+        };
+    }
+
+    const servicio = await serviciosRepositorio.obtenerServicioPorId(
+        Number(id),
+        clinicId,
+        auditPersonId
+    );
 
     return { servicio };
 }
 
-//Actualizar duración de un servicio
-async function actualizarServicio(id, datos, clinicId) {
-    if (
-        !/^[1-9]\d*$/.test(String(id)) ||
-        !Number.isSafeInteger(Number(id))
-    ) {
-        return {
-            error: 'El ID debe ser un entero positivo.',
-            status: 400
-        };
+// Registrar un servicio médico
+async function registrarServicio(datos, clinicId, auditPersonId) {
+    const validacion = validarDatosCreacion(datos);
+
+    if (validacion.error) {
+        return validacion;
     }
-    const { duracion } = datos || {};
-    if (
-        !Number.isSafeInteger(duracion) ||
-        duracion <= 0
-    ) {
-        return {
-            error: 'La duración debe ser un entero positivo.',
-            status: 400
-        };
-    }
-    const servicio = await serviciosRepositorio.actualizarServicio(
-        id,
-        { duracion },
-        clinicId
+
+    const servicio = await serviciosRepositorio.registrarServicio(
+        validacion.datos,
+        clinicId,
+        auditPersonId
     );
+
+    return { servicio };
+}
+
+// Actualizar un servicio médico
+async function actualizarServicio(id, datos, clinicId, auditPersonId) {
+    if (!/^[1-9]\d*$/.test(String(id))) {
+        return {
+            error: 'El ID del servicio debe ser un entero positivo.',
+            status: 400
+        };
+    }
+
+    const validacion = validarDatosActualizacion(datos);
+
+    if (validacion.error) {
+        return validacion;
+    }
+
+    const servicio = await serviciosRepositorio.actualizarServicio(
+        Number(id),
+        validacion.datos,
+        clinicId,
+        auditPersonId
+    );
+
     if (!servicio) {
         return {
-            error: 'Servicio médico no encontrado.',
+            error: 'El servicio no está asociado a esta clínica.',
             status: 404
         };
     }
+
     return { servicio };
 }
 
-//Dar de baja un servicio médico
-async function eliminarServicio(id, clinicId) {
-    if (
-        !/^[1-9]\d*$/.test(String(id)) ||
-        !Number.isSafeInteger(Number(id))
-    ) {
+// Eliminar (baja lógica) un servicio médico
+async function eliminarServicio(id, clinicId, auditPersonId) {
+    if (!/^[1-9]\d*$/.test(String(id))) {
         return {
-            error: 'El ID debe ser un entero positivo.',
+            error: 'El ID del servicio debe ser un entero positivo.',
             status: 400
         };
     }
+
     const resultado = await serviciosRepositorio.eliminarServicio(
-        id,
-        clinicId
+        Number(id),
+        clinicId,
+        auditPersonId
     );
-    if (resultado.estado === 'no_encontrado') {
+
+    if (!resultado) {
         return {
-            error: 'Servicio médico no encontrado.',
+            error: 'El servicio no está asociado a esta clínica o ya fue eliminado.',
             status: 404
         };
     }
-    if (resultado.estado === 'con_citas') {
-        return {
-            error: 'No se puede desactivar un servicio con citas registradas.',
-            status: 409
-        };
-    }
-    return { eliminado: true };
+
+    return { resultado };
 }
 
 module.exports = {

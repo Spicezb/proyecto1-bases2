@@ -1,247 +1,96 @@
 const pool = require('../config/database');
 
-//Obtener servicios médicos de una clínica
-async function obtenerServicios(clinicId) {
+// Consultar todos los servicios médicos de la clínica usando la función de PostgreSQL
+async function obtenerServicios(clinicId, auditPersonId) {
     const query = `
         SELECT
-            cs.clinicserviceid AS id,
-            s.name AS nombre,
-            sp.name AS especialidad,
-            cs.duration AS duracion
-        FROM clinicservices cs
-        INNER JOIN services s
-            ON cs.serviceid = s.serviceid
-        INNER JOIN specialties sp
-            ON s.specialtyid = sp.specialtyid
-        WHERE cs.clinicid = $1
-            AND cs.isactive = TRUE
-            AND s.isactive = TRUE
-            AND sp.isactive = TRUE
-        ORDER BY s.name ASC
+            clinicserviceid AS id,
+            serviceid AS "servicioId",
+            name AS nombre,
+            specialtyid AS "especialidadId",
+            duration AS duracion,
+            isactive AS activo
+        FROM consultarservicios($1, $2)
+        WHERE isactive = TRUE
+        ORDER BY name ASC
     `;
 
-    const resultado = await pool.query(query, [clinicId]);
-
+    const resultado = await pool.query(query, [clinicId, auditPersonId]);
     return resultado.rows;
 }
 
-//Obtener un servicio médico por ID
-async function obtenerServicioPorId(id, clinicId) {
+// Consultar un servicio médico por su ID
+async function obtenerServicioPorId(id, clinicId, auditPersonId) {
     const query = `
         SELECT
-            cs.clinicserviceid AS id,
-            s.name AS nombre,
-            sp.name AS especialidad,
-            cs.duration AS duracion
-        FROM clinicservices cs
-        INNER JOIN services s
-            ON cs.serviceid = s.serviceid
-        INNER JOIN specialties sp
-            ON s.specialtyid = sp.specialtyid
-        WHERE cs.clinicserviceid = $1
-            AND cs.clinicid = $2
-            AND cs.isactive = TRUE
-            AND s.isactive = TRUE
-            AND sp.isactive = TRUE
+            clinicserviceid AS id,
+            serviceid AS "servicioId",
+            name AS nombre,
+            specialtyid AS "especialidadId",
+            duration AS duracion,
+            isactive AS activo
+        FROM consultarservicios($1, $2)
+        WHERE clinicserviceid = $3
     `;
 
-    const resultado = await pool.query(query, [id, clinicId]);
-
+    const resultado = await pool.query(query, [clinicId, auditPersonId, id]);
     return resultado.rows[0];
 }
 
-//Registrar servicio médico en una clínica
-async function registrarServicio(datos, clinicId) {
-    const client = await pool.connect();
+// Registrar servicio médico mediante el Stored Procedure crearservicio
+async function registrarServicio(datos, clinicId, auditPersonId) {
+    const { nombre, especialidadId, duracion } = datos;
 
-    try {
-        await client.query('BEGIN');
+    await pool.query(
+        `CALL crearservicio($1, $2, $3, $4, $5)`,
+        [clinicId, auditPersonId, nombre, especialidadId, duracion]
+    );
 
-        const { nombre, especialidadId, duracion } = datos;
-
-        //Verificar que la especialidad exista
-        const especialidad = await client.query(`
-            SELECT specialtyid
-            FROM specialties
-            WHERE specialtyid = $1 AND isactive = TRUE
-        `, [especialidadId]);
-
-        if (especialidad.rows.length === 0) {
-            const error = new Error('La especialidad no existe.');
-            error.status = 404;
-            throw error;
-        }
-
-        //Buscar si el servicio ya existe globalmente
-        const existente = await client.query(`
-            SELECT serviceid, specialtyid
-            FROM services
-            WHERE name = $1
-        `, [nombre]);
-
-        let serviceId;
-
-        if (existente.rows.length > 0) {
-            //No reutilizar servicios inactivos o de otra especialidad
-            const servicioActual = await client.query(`
-                SELECT serviceid
-                FROM services
-                WHERE serviceid = $1
-                    AND specialtyid = $2
-                    AND isactive = TRUE
-            `, [existente.rows[0].serviceid, especialidadId]);
-
-            if (servicioActual.rows.length === 0) {
-                const error = new Error(
-                    'El servicio ya existe con otra especialidad o está inactivo.'
-                );
-                error.status = 409;
-                throw error;
-            }
-
-            serviceId = existente.rows[0].serviceid;
-
-        } else {
-            //Crear servicio en el catálogo global
-            const nuevo = await client.query(`
-                INSERT INTO services (name, specialtyid)
-                VALUES ($1, $2)
-                RETURNING serviceid
-            `, [nombre, especialidadId]);
-
-            serviceId = nuevo.rows[0].serviceid;
-        }
-
-        //Obtener usuario provisional de la clínica
-        const usuario = await client.query(`
-            SELECT userid
-            FROM users
-            WHERE clinicid = $1 AND isactive = TRUE
-            ORDER BY userid
-            LIMIT 1
-        `, [clinicId]);
-
-        if (usuario.rows.length === 0) {
-            throw new Error('No existe un usuario de prueba para la clínica.');
-        }
-
-        const auditPersonId = usuario.rows[0].userid;
-
-        //Asociar el servicio con la clínica
-        const resultado = await client.query(`
-            INSERT INTO clinicservices
-                (clinicid, serviceid, duration, auditpersonid)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT (clinicid, serviceid) DO NOTHING
-            RETURNING clinicserviceid
-        `, [clinicId, serviceId, duracion, auditPersonId]);
-
-        if (resultado.rows.length === 0) {
-            const error = new Error(
-                'El servicio ya está registrado en esta clínica.'
-            );
-            error.status = 409;
-            throw error;
-        }
-
-        await client.query('COMMIT');
-
-        return {
-            id: resultado.rows[0].clinicserviceid,
-            nombre,
-            especialidadId,
-            duracion
-        };
-
-    } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-    } finally {
-        client.release();
-    }
-}
-
-//Actualizar la duración de un servicio de una clínica
-async function actualizarServicio(id, datos, clinicId) {
-    const { duracion } = datos;
-
+    // Consultar el servicio recién asociado a la clínica
     const query = `
-        UPDATE clinicservices
-        SET duration = $1,
-            updatedat = NOW()
-        WHERE clinicserviceid = $2
-            AND clinicid = $3
-            AND isactive = TRUE
-        RETURNING clinicserviceid AS id, duration AS duracion
+        SELECT
+            clinicserviceid AS id,
+            serviceid AS "servicioId",
+            name AS nombre,
+            specialtyid AS "especialidadId",
+            duration AS duracion,
+            isactive AS activo
+        FROM consultarservicios($1, $2)
+        WHERE name = $3
+        ORDER BY clinicserviceid DESC
+        LIMIT 1
     `;
 
-    const resultado = await pool.query(query, [
-        duracion,
-        id,
-        clinicId
-    ]);
-
-    return resultado.rows[0];
+    const resultado = await pool.query(query, [clinicId, auditPersonId, nombre]);
+    return resultado.rows[0] || { nombre, especialidadId, duracion };
 }
 
-//Dar de baja lógica un servicio de una clínica
-async function eliminarServicio(id, clinicId) {
-    const client = await pool.connect();
+// Actualizar duración o estado de un servicio médico mediante actualizarservicio
+async function actualizarServicio(id, datos, clinicId, auditPersonId) {
+    const { duracion, activo } = datos;
 
-    try {
-        await client.query('BEGIN');
+    await pool.query(
+        `CALL actualizarservicio($1, $2, $3, $4, $5)`,
+        [clinicId, auditPersonId, id, duracion, activo]
+    );
 
-        //Bloquear el servicio mientras se revisan sus dependencias
-        const servicio = await client.query(`
-            SELECT clinicserviceid
-            FROM clinicservices
-            WHERE clinicserviceid = $1
-                AND clinicid = $2
-                AND isactive = TRUE
-            FOR UPDATE
-        `, [id, clinicId]);
+    return await obtenerServicioPorId(id, clinicId, auditPersonId);
+}
 
-        if (servicio.rows.length === 0) {
-            await client.query('ROLLBACK');
-            return { estado: 'no_encontrado' };
-        }
+// Dar de baja lógica un servicio médico (isactive = false)
+async function eliminarServicio(id, clinicId, auditPersonId) {
+    const servicioActual = await obtenerServicioPorId(id, clinicId, auditPersonId);
 
-        //Comprobar si existen citas futuras reservadas
-        const citas = await client.query(`
-            SELECT 1
-            FROM appointments a
-            INNER JOIN appointmentstatuses s
-                ON a.appointmentstatusid = s.appointmentstatusid
-            WHERE a.clinicserviceid = $1
-                AND a.clinicid = $2
-                AND a.date > NOW()
-                AND s.name = 'reservada'
-            LIMIT 1
-        `, [id, clinicId]);
-
-        if (citas.rows.length > 0) {
-            await client.query('ROLLBACK');
-            return { estado: 'con_citas' };
-        }
-
-        await client.query(`
-            UPDATE clinicservices
-            SET isactive = FALSE,
-                updatedat = NOW()
-            WHERE clinicserviceid = $1
-                AND clinicid = $2
-        `, [id, clinicId]);
-
-        await client.query('COMMIT');
-
-        return { estado: 'eliminado' };
-
-    } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-    } finally {
-        client.release();
+    if (!servicioActual) {
+        return null;
     }
+
+    await pool.query(
+        `CALL actualizarservicio($1, $2, $3, $4, $5)`,
+        [clinicId, auditPersonId, id, servicioActual.duracion, false]
+    );
+
+    return { id: Number(id), activo: false };
 }
 
 module.exports = {

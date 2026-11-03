@@ -1,67 +1,15 @@
 const express = require('express');
 const router = express.Router();
-
 const serviciosService = require('../servicios/servicios_servicio');
 
-// GET /api/servicios - Consultar servicios médicos
+// GET /api/servicios - Consultar servicios médicos de la clínica
 router.get('/', async (req, res) => {
     try {
-        const clinicId = 1; //Temporal para pruebas locales
-        const servicios = await serviciosService.obtenerServicios(clinicId);
-        res.status(200).json(servicios);
-    } catch (error) {
-        console.error('Error al consultar servicios:', error);
+        const clinicId = 1; // Temporal para pruebas locales
+        const auditPersonId = 2; // Temporal para pruebas locales (Administrador de clínica)
 
-        res.status(500).json({
-            status: 'error',
-            message: 'Error al consultar servicios médicos.'
-        });
-    }
-});
+        const resultado = await serviciosService.obtenerServicios(clinicId, auditPersonId);
 
-// GET /api/servicios/:id - Consultar un servicio médico
-router.get('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const clinicId = 1; //Temporal para pruebas locales
-        
-        if (!/^[1-9]\d*$/.test(id) ||
-            !Number.isSafeInteger(Number(id))) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'El ID debe ser un entero positivo.'
-            });
-        }
-        const servicio = await serviciosService.obtenerServicioPorId(
-            id,
-            clinicId
-        );
-        if (!servicio) {
-            return res.status(404).json({
-                status: 'error',
-                message: 'Servicio médico no encontrado.'
-            });
-        }
-        res.status(200).json(servicio);
-    } catch (error) {
-        console.error('Error al consultar servicio:', error);
-
-        res.status(500).json({
-            status: 'error',
-            message: 'Error interno del servidor.'
-        });
-    }
-});
-
-// POST /api/servicios - Registrar servicio médico
-router.post('/', async (req, res) => {
-    try {
-        const clinicId = 1; //Temporal para pruebas locales
-
-        const resultado = await serviciosService.registrarServicio(
-            req.body,
-            clinicId
-        );
         if (resultado.error) {
             return res.status(resultado.status).json({
                 status: 'error',
@@ -69,39 +17,147 @@ router.post('/', async (req, res) => {
             });
         }
 
-        return res.status(201).json(resultado.servicio);
+        res.status(200).json(resultado.servicios);
     } catch (error) {
-        console.error('Error al registrar servicio:', error);
+        console.error('Error al consultar servicios:', error);
 
-        if (error.status === 404 || error.status === 409) {
-            return res.status(error.status).json({
+        if (error.message && error.message.includes('Acceso denegado')) {
+            return res.status(403).json({
                 status: 'error',
                 message: error.message
             });
         }
 
+        res.status(500).json({
+            status: 'error',
+            message: 'Error interno del servidor al consultar servicios médicos.'
+        });
+    }
+});
+
+// GET /api/servicios/:id - Consultar un servicio médico por ID
+router.get('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const clinicId = 1; // Temporal para pruebas locales
+        const auditPersonId = 2; // Temporal para pruebas locales
+
+        const resultado = await serviciosService.obtenerServicioPorId(
+            id,
+            clinicId,
+            auditPersonId
+        );
+
+        if (resultado.error) {
+            return res.status(resultado.status).json({
+                status: 'error',
+                message: resultado.error
+            });
+        }
+
+        if (!resultado.servicio) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Servicio médico no encontrado.'
+            });
+        }
+
+        res.status(200).json(resultado.servicio);
+    } catch (error) {
+        console.error('Error al consultar servicio:', error);
+
+        if (error.message && error.message.includes('Acceso denegado')) {
+            return res.status(403).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+
+        res.status(500).json({
+            status: 'error',
+            message: 'Error interno del servidor.'
+        });
+    }
+});
+
+// POST /api/servicios - Registrar un nuevo servicio médico
+router.post('/', async (req, res) => {
+    try {
+        const clinicId = 1; // Temporal para pruebas locales
+        const auditPersonId = 2; // Temporal para pruebas locales (Administrador de clínica)
+
+        const resultado = await serviciosService.registrarServicio(
+            req.body,
+            clinicId,
+            auditPersonId
+        );
+
+        if (resultado.error) {
+            return res.status(resultado.status).json({
+                status: 'error',
+                message: resultado.error
+            });
+        }
+
+        res.status(201).json(resultado.servicio);
+    } catch (error) {
+        console.error('Error al registrar servicio:', error);
+
+        if (error.message && error.message.includes('Solo el administrador')) {
+            return res.status(403).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+
+        if (error.message && error.message.includes('Ya existe un servicio con ese nombre')) {
+            return res.status(409).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+
+        if (error.message && error.message.includes('La especialidad no existe')) {
+            return res.status(404).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+
+        if (error.message && error.message.includes('La duración del servicio')) {
+            return res.status(400).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+
+        // Violación de clave única en clinicservices (duplicado en la misma clínica)
         if (error.code === '23505') {
             return res.status(409).json({
                 status: 'error',
-                message: 'El servicio ya existe o hubo un conflicto.'
+                message: 'El servicio ya se encuentra registrado en esta clínica.'
             });
         }
 
-        return res.status(500).json({
+        res.status(500).json({
             status: 'error',
             message: 'Error interno del servidor.'
         });
     }
 });
 
-// PUT /api/servicios/:id - Actualizar duración
+// PUT /api/servicios/:id - Actualizar duración o estado de un servicio médico
 router.put('/:id', async (req, res) => {
     try {
-        const clinicId = 1; //Temporal para pruebas locales
+        const { id } = req.params;
+        const clinicId = 1; // Temporal para pruebas locales
+        const auditPersonId = 2; // Temporal para pruebas locales (Administrador de clínica)
+
         const resultado = await serviciosService.actualizarServicio(
-            req.params.id,
+            id,
             req.body,
-            clinicId
+            clinicId,
+            auditPersonId
         );
 
         if (resultado.error) {
@@ -110,37 +166,82 @@ router.put('/:id', async (req, res) => {
                 message: resultado.error
             });
         }
-        return res.status(200).json(resultado.servicio);
 
+        res.status(200).json(resultado.servicio);
     } catch (error) {
         console.error('Error al actualizar servicio:', error);
-        return res.status(500).json({
+
+        if (error.message && error.message.includes('Solo el administrador')) {
+            return res.status(403).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+
+        if (error.message && error.message.includes('no está asociado a esta clínica')) {
+            return res.status(404).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+
+        if (error.message && error.message.includes('La duración del servicio')) {
+            return res.status(400).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+
+        res.status(500).json({
             status: 'error',
             message: 'Error interno del servidor.'
         });
     }
 });
 
-//DELETE /api/servicios/:id - Baja lógica
+// DELETE /api/servicios/:id - Dar de baja lógica un servicio médico
 router.delete('/:id', async (req, res) => {
     try {
-        const clinicId = 1; //Temporal para pruebas locales
+        const { id } = req.params;
+        const clinicId = 1; // Temporal para pruebas locales
+        const auditPersonId = 2; // Temporal para pruebas locales (Administrador de clínica)
 
         const resultado = await serviciosService.eliminarServicio(
-            req.params.id,
-            clinicId
+            id,
+            clinicId,
+            auditPersonId
         );
+
         if (resultado.error) {
             return res.status(resultado.status).json({
                 status: 'error',
                 message: resultado.error
             });
         }
-        return res.status(204).send();
 
+        res.status(200).json({
+            status: 'ok',
+            message: 'Servicio médico desactivado correctamente.',
+            data: resultado.resultado
+        });
     } catch (error) {
         console.error('Error al eliminar servicio:', error);
-        return res.status(500).json({
+
+        if (error.message && error.message.includes('Solo el administrador')) {
+            return res.status(403).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+
+        if (error.message && error.message.includes('no está asociado a esta clínica')) {
+            return res.status(404).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+
+        res.status(500).json({
             status: 'error',
             message: 'Error interno del servidor.'
         });

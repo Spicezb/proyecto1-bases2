@@ -305,12 +305,12 @@ BEGIN
                 v_date
             ) d
             CROSS JOIN LATERAL generate_series(
-                d.startdatetime,
-                d.enddatetime - make_interval(mins => v_duration),
+                d.slotstart,
+                d.slotend - make_interval(mins => v_duration),
                 make_interval(mins => v_duration)
             ) AS slots(slot_start)
             WHERE slots.slot_start + make_interval(mins => v_duration)
-                  <= d.enddatetime;
+                  <= d.slotend;
 
         END LOOP;
     END LOOP;

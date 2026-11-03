@@ -6,12 +6,20 @@ const PORT = process.env.PORT || 3000;
 const pacientesRoutes = require('./rutas/pacientes_rts');
 const serviciosRoutes = require('./rutas/servicios_rts');
 const profesionalesRoutes = require('./rutas/profesionales_rts');
+const horariosRoutes = require('./rutas/horarios_rts');
+const bloqueosRoutes = require('./rutas/bloqueos_rts');
+const disponibilidadRoutes = require('./rutas/disponibilidad_rts');
+const citasRoutes = require('./rutas/citas_rts');
 
 app.use(express.json());
 
 app.use('/api/pacientes', pacientesRoutes);
 app.use('/api/servicios', serviciosRoutes);
 app.use('/api/profesionales', profesionalesRoutes);
+app.use('/api/horarios', horariosRoutes);
+app.use('/api/bloqueos', bloqueosRoutes);
+app.use('/api/disponibilidad', disponibilidadRoutes);
+app.use('/api/citas', citasRoutes);
 
 // GET /health - Verifica que la aplicación esté viva
 app.get('/health', (req, res) => {
