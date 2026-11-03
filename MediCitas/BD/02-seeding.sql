@@ -217,6 +217,7 @@ DECLARE
     v_action_id INT;
     v_table_id INT;
     v_result_id INT;
+    v_duration INT;
 BEGIN
     SELECT appointmentStatusId INTO v_status_id_atendida FROM appointmentstatuses WHERE name = 'atendida';
     SELECT appointmentStatusId INTO v_status_id_reservada FROM appointmentstatuses WHERE name = 'reservada';
@@ -273,10 +274,13 @@ BEGIN
         SELECT clinicprofessionalid INTO v_clinic_prof_id FROM clinicprofessionals WHERE userid = v_prof_user_id AND clinicid = v_clinic_id;
         SELECT clinicserviceid INTO v_clinic_service_id FROM clinicprofessionalservices WHERE clinicprofessionalid = v_clinic_prof_id LIMIT 1;
 
-        -- citas en el pasado y en el futuro con distintos estados
+        -- OBTENER DURACIÓN DEL SERVICIO PARA CALCULAR EL FIN DE LA CITA
+        SELECT duration INTO v_duration FROM clinicservices WHERE clinicserviceid = v_clinic_service_id;
+
+        -- citas en el pasado y en el futuro con distintos estados (LÍNEA 199 original)
         IF i <= 20 THEN
-            INSERT INTO appointments (clinicpatientid, clinicid, clinicprofessionalid, clinicserviceid, appointmentstatusid, date, auditpersonid)
-            VALUES (v_clinic_patient_id, v_clinic_id, v_clinic_prof_id, v_clinic_service_id, v_status_id_atendida, NOW() - INTERVAL '7 days', v_user_id)
+            INSERT INTO appointments (clinicpatientid, clinicid, clinicprofessionalid, clinicserviceid, appointmentstatusid, date, enddatetime, auditpersonid)
+            VALUES (v_clinic_patient_id, v_clinic_id, v_clinic_prof_id, v_clinic_service_id, v_status_id_atendida, NOW() - INTERVAL '7 days', (NOW() - INTERVAL '7 days') + (v_duration * INTERVAL '1 minute'), v_user_id)
             RETURNING appointmentId INTO v_appointment_id;
 
         -- notas de ejemplo para citas que ya fueron atendidas
@@ -284,19 +288,21 @@ BEGIN
             VALUES (v_appointment_id, 'Atención del paciente' || i || ' procesada con éxito en el sistema.', v_clinic_prof_id);
 
         ELSIF i > 20 AND i <= 45 THEN
-            INSERT INTO appointments (clinicpatientid, clinicid, clinicprofessionalid, clinicserviceid, appointmentstatusid, date, auditpersonid)
-            VALUES (v_clinic_patient_id, v_clinic_id, v_clinic_prof_id, v_clinic_service_id, v_status_id_reservada, NOW() + INTERVAL '5 days', v_user_id);
+            INSERT INTO appointments (clinicpatientid, clinicid, clinicprofessionalid, clinicserviceid, appointmentstatusid, date, enddatetime, auditpersonid)
+            VALUES (v_clinic_patient_id, v_clinic_id, v_clinic_prof_id, v_clinic_service_id, v_status_id_reservada, NOW() + INTERVAL '5 days', (NOW() + INTERVAL '5 days') + (v_duration * INTERVAL '1 minute'), v_user_id);
         
         ELSIF i > 45 AND i <= 55 THEN
-            INSERT INTO appointments (clinicpatientid, clinicid, clinicprofessionalid, clinicserviceid, appointmentstatusid, date, cancellationreason, auditpersonid)
+            INSERT INTO appointments (clinicpatientid, clinicid, clinicprofessionalid, clinicserviceid, appointmentstatusid, date, enddatetime, cancellationreason, auditpersonid)
             VALUES (
                 v_clinic_patient_id, v_clinic_id, v_clinic_prof_id, v_clinic_service_id, 
                 CASE WHEN i % 2 = 0 THEN v_status_id_ausente ELSE v_status_id_cancelada END, 
                 NOW() - INTERVAL '2 days', 
+                (NOW() - INTERVAL '2 days') + (v_duration * INTERVAL '1 minute'),
                 CASE WHEN i % 2 != 0 THEN 'Cancelación sistemática automatizada' ELSE NULL END, 
                 v_user_id
             );
         END IF;
+
 
         -- registros de auditoría ilustrativos
         IF i <= 30 THEN

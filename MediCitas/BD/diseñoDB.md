@@ -154,6 +154,7 @@ El email y el phone el paciente se lo brinda a cada clínica, esta sí es info s
 - clinicServiceId INT FK (clinicServices) NOT NULL
 - appointmentStatusId INT FK (appointmentStatuses) NOT NULL
 - date TIMESTAMPTZ NOT NULL
+- enddatetime TIMESTAMPTZ NOT NULL
 - cancellationReason VARCHAR(250)
 - auditPersonID INT FK (users) NOT NULL
 - createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW()

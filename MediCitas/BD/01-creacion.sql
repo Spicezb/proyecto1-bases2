@@ -1,5 +1,7 @@
 begin;
 
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
 create table roles (
     roleid serial primary key,
     name varchar(30) not null unique,
@@ -148,6 +150,13 @@ create table professionalschedules (
     updatedat timestamptz not null default now(),
     isactive boolean not null default true,
     constraint ckprofessionalscheduletimes check (endtime > starttime)
+
+    -- Evitar que se traslapen turnos el mismo día para el mismo profesional
+    CONSTRAINT excludeprofessionalschedules EXCLUDE USING gist (
+        clinicprofessionalid WITH =,
+        day WITH =,
+        timerange(starttime, endtime, '[)') WITH &&
+    ) WHERE (isactive = true)
 );
 
 create table appointmentstatuses (
@@ -158,19 +167,35 @@ create table appointmentstatuses (
 );
 
 create table appointments (
-    appointmentid serial primary key,
-    clinicpatientid int not null references clinicpatients(clinicpatientid),
-    clinicid int not null references clinics(clinicid),
-    clinicprofessionalid int not null references clinicprofessionals(clinicprofessionalid),
-    clinicserviceid int not null references clinicservices(clinicserviceid),
-    appointmentstatusid int not null references appointmentstatuses(appointmentstatusid),
-    date timestamptz not null,
+    appointmentid serial PRIMARY KEY,
+    clinicpatientid int NOT NULL REFERENCES clinicpatients(clinicpatientid),
+    clinicid int NOT NULL REFERENCES clinics(clinicid),
+    clinicprofessionalid int not null REFERENCES clinicprofessionals(clinicprofessionalid),
+    clinicserviceid int NOT NULL REFERENCES clinicservices(clinicserviceid),
+    appointmentstatusid int NOT NULL REFERENCES appointmentstatuses(appointmentstatusid),
+    date timestamptz NOT NULL,
+    enddatetime timestamptz NOT NULL, 
     cancellationreason varchar(250),
-    auditpersonid int not null references users(userid),
-    createdat timestamptz not null default now(),
-    updatedat timestamptz not null default now(),
-    isblocked boolean not null default false
+    auditpersonid int NOT NULL REFERENCES users(userid),
+    createdat timestamptz NOT NULL DEFAULT now(),
+    updatedat timestamptz NOT NULL DEFAULT now(),
+    isblocked boolean NOT NULL DEFAULT false,
+    CONSTRAINT ckappointmenttimes CHECK (enddatetime > date),
+    
+    -- Evitar traslapes para un mismo profesional calculando el rango
+    CONSTRAINT excludecitasprofesional EXCLUDE USING gist (
+        clinicprofessionalid WITH =,
+        tstzrange(date, enddatetime, '[)') WITH &&
+    ) WHERE (appointmentstatusid = 1 AND isblocked = false),
+    
+    -- Evitar traslapes para un mismo paciente dentro de una clínica
+    CONSTRAINT excludecitaspaciente EXCLUDE USING gist (
+        clinicid WITH =,
+        clinicpatientid WITH =,
+        tstzrange(date, enddatetime, '[)') WITH &&
+    ) WHERE (appointmentstatusid = 1 AND isblocked = false)
 );
+
 
 create table clinicalnotes (
     clinicalnoteid serial primary key,
@@ -193,6 +218,12 @@ create table scheduleblocks (
     updatedat timestamptz not null default now(),
     isactive boolean not null default true,
     constraint ckscheduleblocktimes check (enddatetime > startdatetime)
+
+     -- Evitar que se traslapen dos bloqueos para el mismo profesional
+    CONSTRAINT excludescheduleblocks EXCLUDE USING gist (
+        clinicprofessionalid WITH =,
+        tstzrange(startdatetime, enddatetime, '[)') WITH &&
+    ) WHERE (isactive = true)
 );
 
 create table auditactions (
