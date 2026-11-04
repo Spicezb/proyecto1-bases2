@@ -6,7 +6,7 @@ const profesionalesService = require('../servicios/profesionales_servicio');
 router.get('/', async (req, res) => {
     try {
         const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 2; // Temporal para pruebas locales (Administrador de clínica)
+        const auditPersonId = 4; // Temporal para pruebas locales (Administrador de clínica)
 
         const resultado = await profesionalesService.obtenerProfesionales(clinicId, auditPersonId);
 
@@ -40,7 +40,7 @@ router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 2; // Temporal para pruebas locales
+        const auditPersonId = 4; // Temporal para pruebas locales
 
         const resultado = await profesionalesService.obtenerProfesionalPorId(
             id,
@@ -110,7 +110,7 @@ router.get('/:id/servicios', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 2; // Temporal para pruebas locales (Administrador de clínica)
+        const auditPersonId = 4; // Temporal para pruebas locales (Administrador de clínica)
 
         const resultado = await profesionalesService.registrarProfesional(
             req.body,
@@ -170,7 +170,7 @@ router.post('/:id/servicios', async (req, res) => {
         const { id } = req.params;
         const { servicioId } = req.body;
         const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 2; // Temporal para pruebas locales (Administrador de clínica)
+        const auditPersonId = 4; // Temporal para pruebas locales (Administrador de clínica)
 
         const resultado = await profesionalesService.asociarServicio(
             id,
@@ -224,7 +224,7 @@ router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 2; // Temporal para pruebas locales (Administrador de clínica)
+        const auditPersonId = 4; // Temporal para pruebas locales (Administrador de clínica)
 
         const resultado = await profesionalesService.actualizarProfesional(
             id,
@@ -258,6 +258,13 @@ router.put('/:id', async (req, res) => {
             });
         }
 
+        if (error.status === 400 || error.status === 409) {
+            return res.status(error.status).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+
         res.status(500).json({
             status: 'error',
             message: 'Error interno del servidor.'
@@ -270,7 +277,7 @@ router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 2; // Temporal para pruebas locales (Administrador de clínica)
+        const auditPersonId = 4; // Temporal para pruebas locales (Administrador de clínica)
 
         const resultado = await profesionalesService.eliminarProfesional(
             id,
@@ -295,6 +302,16 @@ router.delete('/:id', async (req, res) => {
 
         if (error.message && error.message.includes('Solo el administrador')) {
             return res.status(403).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+
+        if (
+            error.message ===
+            'No se puede desactivar un profesional con citas futuras reservadas.'
+        ) {
+            return res.status(409).json({
                 status: 'error',
                 message: error.message
             });

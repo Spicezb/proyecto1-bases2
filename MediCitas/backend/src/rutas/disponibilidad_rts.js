@@ -6,7 +6,7 @@ const disponibilidadService = require('../servicios/disponibilidad_servicio');
 router.get('/profesional', async (req, res) => {
     try {
         const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 2; // Temporal para pruebas locales
+        const auditPersonId = 4; // Temporal para pruebas locales
         const { profesionalId, fecha } = req.query;
 
         if (!profesionalId || !fecha) {
@@ -59,7 +59,7 @@ router.get('/profesional', async (req, res) => {
 router.get('/servicio', async (req, res) => {
     try {
         const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 2; // Temporal para pruebas locales
+        const auditPersonId = 4; // Temporal para pruebas locales
         const { servicioId, fechaInicio, fechaFin } = req.query;
 
         if (!servicioId || !fechaInicio || !fechaFin) {

@@ -149,13 +149,17 @@ create table professionalschedules (
     createdat timestamptz not null default now(),
     updatedat timestamptz not null default now(),
     isactive boolean not null default true,
-    constraint ckprofessionalscheduletimes check (endtime > starttime)
+    constraint ckprofessionalscheduletimes check (endtime > starttime),
 
-    -- Evitar que se traslapen turnos el mismo día para el mismo profesional
+    -- Evitar horarios traslapados para un mismo profesional y día
     CONSTRAINT excludeprofessionalschedules EXCLUDE USING gist (
         clinicprofessionalid WITH =,
         day WITH =,
-        timerange(starttime, endtime, '[)') WITH &&
+        tsrange(
+            date '2000-01-01' + starttime,
+            date '2000-01-01' + endtime,
+            '[)'
+        ) WITH &&
     ) WHERE (isactive = true)
 );
 
@@ -217,7 +221,7 @@ create table scheduleblocks (
     createdat timestamptz not null default now(),
     updatedat timestamptz not null default now(),
     isactive boolean not null default true,
-    constraint ckscheduleblocktimes check (enddatetime > startdatetime)
+    constraint ckscheduleblocktimes check (enddatetime > startdatetime),
 
      -- Evitar que se traslapen dos bloqueos para el mismo profesional
     CONSTRAINT excludescheduleblocks EXCLUDE USING gist (

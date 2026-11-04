@@ -289,7 +289,7 @@ BEGIN
 
         ELSIF i > 20 AND i <= 45 THEN
             INSERT INTO appointments (clinicpatientid, clinicid, clinicprofessionalid, clinicserviceid, appointmentstatusid, date, enddatetime, auditpersonid)
-            VALUES (v_clinic_patient_id, v_clinic_id, v_clinic_prof_id, v_clinic_service_id, v_status_id_reservada, NOW() + INTERVAL '5 days', (NOW() + INTERVAL '5 days') + (v_duration * INTERVAL '1 minute'), v_user_id);
+           VALUES (v_clinic_patient_id, v_clinic_id, v_clinic_prof_id, v_clinic_service_id, v_status_id_reservada, NOW() + (i || ' days')::INTERVAL, NOW() + (i || ' days')::INTERVAL + (v_duration * INTERVAL '1 minute'),v_user_id);
         
         ELSIF i > 45 AND i <= 55 THEN
             INSERT INTO appointments (clinicpatientid, clinicid, clinicprofessionalid, clinicserviceid, appointmentstatusid, date, enddatetime, cancellationreason, auditpersonid)

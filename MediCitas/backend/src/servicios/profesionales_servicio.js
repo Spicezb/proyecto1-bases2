@@ -23,9 +23,15 @@ function validarDatosCreacion(datos) {
     }
 
     if (especialidades !== undefined) {
-        if (!Array.isArray(especialidades) || especialidades.some(id => !Number.isSafeInteger(id) || id <= 0)) {
+        if (
+            !Array.isArray(especialidades) ||
+            especialidades.some(id =>
+                !Number.isSafeInteger(id) || id <= 0
+            ) ||
+            new Set(especialidades).size !== especialidades.length
+        ) {
             return {
-                error: 'Las especialidades deben ser un arreglo de IDs enteros positivos.',
+                error: 'Las especialidades deben ser IDs válidos y sin duplicados.',
                 status: 400
             };
         }
@@ -53,17 +59,23 @@ function validarDatosActualizacion(datos) {
         }
     }
 
-    if (activo !== undefined && typeof activo !== 'boolean') {
+    if (activo !== undefined && activo !== true) {
         return {
-            error: 'El campo activo debe ser un valor booleano.',
+            error: 'Para desactivar un profesional utilice DELETE.',
             status: 400
         };
     }
 
     if (especialidades !== undefined) {
-        if (!Array.isArray(especialidades) || especialidades.some(id => !Number.isSafeInteger(id) || id <= 0)) {
+        if (
+            !Array.isArray(especialidades) ||
+            especialidades.some(
+                id => !Number.isSafeInteger(id) || id <= 0
+            ) ||
+            new Set(especialidades).size !== especialidades.length
+        ) {
             return {
-                error: 'Las especialidades deben ser un arreglo de IDs enteros positivos.',
+                error: 'Las especialidades deben ser IDs válidos y sin duplicados.',
                 status: 400
             };
         }

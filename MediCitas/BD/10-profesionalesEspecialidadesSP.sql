@@ -62,6 +62,7 @@ BEGIN
 END;
 $$;
 
+
 CREATE OR REPLACE PROCEDURE actualizarprofesional(
     p_clinicid INT,
     p_auditpersonid INT,
@@ -71,95 +72,65 @@ CREATE OR REPLACE PROCEDURE actualizarprofesional(
 )
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_clinicprofessionalid INT;
 BEGIN
+    -- Verificar que el usuario sea administrador de la clínica
     IF NOT EXISTS (
         SELECT 1
-        FROM users
-        WHERE userid = p_auditpersonid
-          AND clinicid = p_clinicid
-          AND roleid = 2
-          AND isactive = TRUE
+        FROM users u
+        WHERE u.userid = p_auditpersonid
+          AND u.clinicid = p_clinicid
+          AND u.roleid = 2
+          AND u.isactive = TRUE
     ) THEN
-        RAISE EXCEPTION 'Solo el administrador de clínica puede actualizar profesionales.';
+        RAISE EXCEPTION
+            'Solo el administrador de clínica puede actualizar profesionales.';
     END IF;
 
-    IF NOT EXISTS (
-        SELECT 1
-        FROM clinicprofessionals
-        WHERE professionalid = p_professionalid
-          AND clinicid = p_clinicid
-          AND isactive = TRUE
-    ) THEN
-        RAISE EXCEPTION 'El profesional no está asociado activamente a esta clínica.';
+    -- Verificar que el profesional esté asociado a la clínica y bloquear su asociación durante la operación
+    SELECT cp.clinicprofessionalid
+    INTO v_clinicprofessionalid
+    FROM clinicprofessionals cp
+    WHERE cp.professionalid = p_professionalid
+      AND cp.clinicid = p_clinicid
+      AND cp.isactive = TRUE
+    FOR UPDATE;
+
+    IF v_clinicprofessionalid IS NULL THEN
+        RAISE EXCEPTION
+            'El profesional no está asociado activamente a esta clínica.';
     END IF;
 
+    -- Si se solicita una baja, comprobar citas futuras reservadas
+    IF p_isactive = FALSE THEN
+        IF EXISTS (
+            SELECT 1
+            FROM appointments a
+            JOIN appointmentstatuses aps
+                ON aps.appointmentstatusid = a.appointmentstatusid
+            WHERE a.clinicprofessionalid = v_clinicprofessionalid
+              AND a.clinicid = p_clinicid
+              AND a.date > NOW()
+              AND aps.name = 'reservada'
+        ) THEN
+            RAISE EXCEPTION
+                'No se puede desactivar un profesional con citas futuras reservadas.';
+        END IF;
+    END IF;
+
+    -- Actualizar la licencia del profesional
     UPDATE professionals
     SET licenseid = p_licenseid,
         updatedat = NOW()
     WHERE professionalid = p_professionalid;
 
+    -- Actualizar su estado únicamente en esta clínica
     UPDATE clinicprofessionals
     SET isactive = p_isactive,
         updatedat = NOW()
-    WHERE professionalid = p_professionalid
-      AND clinicid = p_clinicid;
-END;
-$$;
+    WHERE clinicprofessionalid = v_clinicprofessionalid;
 
-CREATE OR REPLACE PROCEDURE asignarespecialidad(
-    p_clinicid INT,
-    p_auditpersonid INT,
-    p_professionalid INT,
-    p_specialtyid INT
-)
-LANGUAGE plpgsql
-AS $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM users
-        WHERE userid = p_auditpersonid
-          AND clinicid = p_clinicid
-          AND roleid = 2
-          AND isactive = TRUE
-    ) THEN
-        RAISE EXCEPTION 'Solo el administrador de clínica puede asignar especialidades.';
-    END IF;
-
-    IF NOT EXISTS (
-        SELECT 1
-        FROM clinicprofessionals
-        WHERE professionalid = p_professionalid
-          AND clinicid = p_clinicid
-          AND isactive = TRUE
-    ) THEN
-        RAISE EXCEPTION 'El profesional no pertenece a esta clínica.';
-    END IF;
-
-    IF NOT EXISTS (
-        SELECT 1
-        FROM specialties
-        WHERE specialtyid = p_specialtyid
-          AND isactive = TRUE
-    ) THEN
-        RAISE EXCEPTION 'La especialidad no existe o está inactiva.';
-    END IF;
-
-    INSERT INTO professionalspecialties (
-        professionalid,
-        specialtyid,
-        auditpersonid
-    )
-    VALUES (
-        p_professionalid,
-        p_specialtyid,
-        p_auditpersonid
-    )
-    ON CONFLICT (professionalid, specialtyid)
-    DO UPDATE SET
-        isactive = TRUE,
-        updatedat = NOW(),
-        auditpersonid = EXCLUDED.auditpersonid;
 END;
 $$;
 
@@ -181,11 +152,11 @@ AS $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1
-        FROM users
-        WHERE userid = p_auditpersonid
-          AND clinicid = p_clinicid
-          AND roleid IN (2, 3, 4)
-          AND isactive = TRUE
+        FROM users u
+        WHERE u.userid = p_auditpersonid
+        AND u.clinicid = p_clinicid
+        AND u.roleid IN (2, 3, 4)
+        AND u.isactive = TRUE
     ) THEN
         RAISE EXCEPTION 'Acceso denegado.';
     END IF;

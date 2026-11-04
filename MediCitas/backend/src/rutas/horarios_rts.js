@@ -6,7 +6,7 @@ const horariosService = require('../servicios/horarios_servicio');
 router.get('/', async (req, res) => {
     try {
         const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 2; // Temporal para pruebas locales (Administrador de clínica)
+        const auditPersonId = 4; // Temporal para pruebas locales (Administrador de clínica)
         const { profesionalId } = req.query;
 
         const resultado = await horariosService.obtenerHorarios(
@@ -45,7 +45,7 @@ router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 2; // Temporal para pruebas locales
+        const auditPersonId = 4; // Temporal para pruebas locales (Administrador de clínica)
 
         const resultado = await horariosService.obtenerHorarioPorId(
             id,
@@ -89,7 +89,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 2; // Temporal para pruebas locales (Administrador de clínica)
+        const auditPersonId = 4; // Temporal para pruebas locales (Administrador de clínica)
 
         const resultado = await horariosService.crearHorario(
             req.body,
@@ -156,7 +156,7 @@ router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 2; // Temporal para pruebas locales (Administrador de clínica)
+        const auditPersonId = 4; // Temporal para pruebas locales (Administrador de clínica)
 
         const resultado = await horariosService.actualizarHorario(
             id,
@@ -223,7 +223,7 @@ router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 2; // Temporal para pruebas locales (Administrador de clínica)
+        const auditPersonId = 4; // Temporal para pruebas locales (Administrador de clínica)
 
         const resultado = await horariosService.eliminarHorario(
             id,
