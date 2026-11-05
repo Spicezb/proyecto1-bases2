@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const serviciosService = require('../servicios/servicios_servicio');
+const { autorizarRoles } = require('../middlewares/roles');
 
 // GET /api/servicios - Consultar servicios médicos de la clínica
-router.get('/', async (req, res) => {
+router.get('/', autorizarRoles(['administrador de clínica', 'recepción', 'profesional de salud']), async (req, res) => {
     try {
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 2; // Temporal para pruebas locales (Administrador de clínica)
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
         const resultado = await serviciosService.obtenerServicios(clinicId, auditPersonId);
 
@@ -36,11 +37,11 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/servicios/:id - Consultar un servicio médico por ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', autorizarRoles(['administrador de clínica', 'recepción', 'profesional de salud']), async (req, res) => {
     try {
         const { id } = req.params;
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 2; // Temporal para pruebas locales
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
         const resultado = await serviciosService.obtenerServicioPorId(
             id,
@@ -80,11 +81,11 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// POST /api/servicios - Registrar un nuevo servicio médico
-router.post('/', async (req, res) => {
+// POST /api/servicios - Registrar un nuevo servicio médico (Solo Administrador de clínica)
+router.post('/', autorizarRoles(['administrador de clínica']), async (req, res) => {
     try {
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 2; // Temporal para pruebas locales (Administrador de clínica)
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
         const resultado = await serviciosService.registrarServicio(
             req.body,
@@ -131,7 +132,6 @@ router.post('/', async (req, res) => {
             });
         }
 
-        // Violación de clave única en clinicservices (duplicado en la misma clínica)
         if (error.code === '23505') {
             return res.status(409).json({
                 status: 'error',
@@ -146,12 +146,12 @@ router.post('/', async (req, res) => {
     }
 });
 
-// PUT /api/servicios/:id - Actualizar duración o estado de un servicio médico
-router.put('/:id', async (req, res) => {
+// PUT /api/servicios/:id - Actualizar duración o estado de un servicio médico (Solo Administrador de clínica)
+router.put('/:id', autorizarRoles(['administrador de clínica']), async (req, res) => {
     try {
         const { id } = req.params;
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 2; // Temporal para pruebas locales (Administrador de clínica)
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
         const resultado = await serviciosService.actualizarServicio(
             id,
@@ -199,12 +199,12 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// DELETE /api/servicios/:id - Dar de baja lógica un servicio médico
-router.delete('/:id', async (req, res) => {
+// DELETE /api/servicios/:id - Dar de baja lógica un servicio médico (Solo Administrador de clínica)
+router.delete('/:id', autorizarRoles(['administrador de clínica']), async (req, res) => {
     try {
         const { id } = req.params;
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 2; // Temporal para pruebas locales (Administrador de clínica)
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
         const resultado = await serviciosService.eliminarServicio(
             id,

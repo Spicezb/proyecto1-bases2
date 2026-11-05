@@ -1,14 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const pacientesService = require('../servicios/pacientes_servicio');
+const { autorizarRoles } = require('../middlewares/roles');
 
-// GET /api/pacientes - Consultar pacientes de una clínica
-router.get('/', async (req, res) => {
+// GET /api/pacientes - Consultar pacientes de una clínica (Adm. clínica, Recepción, Profesional solo lectura)
+router.get('/', autorizarRoles(['administrador de clínica', 'recepción', 'profesional de salud']), async (req, res) => {
     try {
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 4; //Temporal para pruebas locales
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
-        const pacientes = await pacientesService.obtenerPacientes(clinicId,auditPersonId);
+        const pacientes = await pacientesService.obtenerPacientes(clinicId, auditPersonId);
 
         res.status(200).json(pacientes);
     } catch (error) {
@@ -29,11 +30,11 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/pacientes/:id para consultar un paciente
-router.get('/:id', async (req, res) => {
+router.get('/:id', autorizarRoles(['administrador de clínica', 'recepción', 'profesional de salud']), async (req, res) => {
     try {
         const { id } = req.params;
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 4; //Temporal para pruebas locales
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
         if (!/^[1-9]\d*$/.test(id)) {
             return res.status(400).json({
@@ -72,11 +73,11 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// POST /api/pacientes - Registrar paciente
-router.post('/', async (req, res) => {
+// POST /api/pacientes - Registrar paciente (Recepción y Adm. clínica)
+router.post('/', autorizarRoles(['recepción', 'administrador de clínica']), async (req, res) => {
     try {
-        const clinicId = 1; //Temporal para pruebas locales
-        const auditPersonId = 7; //Temporal para pruebas locales
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
         const resultado = await pacientesService.registrarPaciente(
             req.body,
@@ -121,12 +122,12 @@ router.post('/', async (req, res) => {
     }
 });
 
-// PUT /api/pacientes/:id - Actualizar paciente
-router.put('/:id', async (req, res) => {
+// PUT /api/pacientes/:id - Actualizar paciente (Recepción y Adm. clínica)
+router.put('/:id', autorizarRoles(['recepción', 'administrador de clínica']), async (req, res) => {
     try {
         const { id } = req.params;
-        const clinicId = 1; //Temporal para desarrollo local
-        const auditPersonId = 7; //Temporal para pruebas locales
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
         const resultado = await pacientesService.actualizarPaciente(
             id,

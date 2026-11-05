@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const horariosService = require('../servicios/horarios_servicio');
+const { autorizarRoles } = require('../middlewares/roles');
 
 // GET /api/horarios - Consultar horarios semanales (opcionalmente ?profesionalId=X)
-router.get('/', async (req, res) => {
+router.get('/', autorizarRoles(['administrador de clínica', 'recepción', 'profesional de salud']), async (req, res) => {
     try {
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 4; // Temporal para pruebas locales (Administrador de clínica)
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
         const { profesionalId } = req.query;
 
         const resultado = await horariosService.obtenerHorarios(
@@ -41,11 +42,11 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/horarios/:id - Consultar un horario por su ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', autorizarRoles(['administrador de clínica', 'recepción', 'profesional de salud']), async (req, res) => {
     try {
         const { id } = req.params;
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 4; // Temporal para pruebas locales (Administrador de clínica)
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
         const resultado = await horariosService.obtenerHorarioPorId(
             id,
@@ -85,11 +86,11 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// POST /api/horarios - Registrar un nuevo horario semanal
-router.post('/', async (req, res) => {
+// POST /api/horarios - Registrar un nuevo horario semanal (Solo Administrador de clínica)
+router.post('/', autorizarRoles(['administrador de clínica']), async (req, res) => {
     try {
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 4; // Temporal para pruebas locales (Administrador de clínica)
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
         const resultado = await horariosService.crearHorario(
             req.body,
@@ -108,7 +109,6 @@ router.post('/', async (req, res) => {
     } catch (error) {
         console.error('Error al registrar horario:', error);
 
-        // Violación de restricción de exclusión (solapamiento de horarios)
         if (
             error.code === '23P01' ||
             (error.message && error.message.includes('excludeprofessionalschedules'))
@@ -151,12 +151,12 @@ router.post('/', async (req, res) => {
     }
 });
 
-// PUT /api/horarios/:id - Actualizar un horario semanal existente
-router.put('/:id', async (req, res) => {
+// PUT /api/horarios/:id - Actualizar un horario semanal existente (Solo Administrador de clínica)
+router.put('/:id', autorizarRoles(['administrador de clínica']), async (req, res) => {
     try {
         const { id } = req.params;
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 4; // Temporal para pruebas locales (Administrador de clínica)
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
         const resultado = await horariosService.actualizarHorario(
             id,
@@ -218,12 +218,12 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// DELETE /api/horarios/:id - Desactivar un horario semanal (baja lógica)
-router.delete('/:id', async (req, res) => {
+// DELETE /api/horarios/:id - Desactivar un horario semanal (Solo Administrador de clínica)
+router.delete('/:id', autorizarRoles(['administrador de clínica']), async (req, res) => {
     try {
         const { id } = req.params;
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 4; // Temporal para pruebas locales (Administrador de clínica)
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
         const resultado = await horariosService.eliminarHorario(
             id,

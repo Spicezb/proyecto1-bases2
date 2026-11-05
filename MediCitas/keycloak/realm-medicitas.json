@@ -1,0 +1,275 @@
+{
+  "realm": "medicitas",
+  "displayName": "MediCitas SaaS",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "administrador de plataforma",
+        "description": "Administrador global de la plataforma SaaS"
+      },
+      {
+        "name": "administrador de clínica",
+        "description": "Administrador de usuarios, servicios y profesionales de una clínica"
+      },
+      {
+        "name": "recepción",
+        "description": "Personal de recepción para gestión de pacientes y citas"
+      },
+      {
+        "name": "profesional de salud",
+        "description": "Médicos y profesionales de salud de la clínica"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "medicitas-api",
+      "name": "MediCitas Backend API",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "*"
+      ],
+      "webOrigins": [
+        "*"
+      ],
+      "attributes": {
+        "access.token.lifespan": "3600"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "admin-plataforma",
+      "enabled": true,
+      "email": "admin.plataforma@medicitas.test",
+      "firstName": "Admin",
+      "lastName": "Plataforma",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "12345",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "administrador de plataforma"
+      ]
+    },
+    {
+      "username": "ana-solis",
+      "enabled": true,
+      "email": "ana.admin@central.test",
+      "firstName": "Ana",
+      "lastName": "Solís",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "12345",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "administrador de clínica"
+      ]
+    },
+    {
+      "username": "luis-mora",
+      "enabled": true,
+      "email": "luis.recepcion@central.test",
+      "firstName": "Luis",
+      "lastName": "Mora",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "12345",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "recepción"
+      ]
+    },
+    {
+      "username": "maria-rojas",
+      "enabled": true,
+      "email": "maria.rojas@central.test",
+      "firstName": "María",
+      "lastName": "Rojas",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "12345",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "profesional de salud"
+      ]
+    },
+    {
+      "username": "carlos-vega",
+      "enabled": true,
+      "email": "carlos.vega@central.test",
+      "firstName": "Carlos",
+      "lastName": "Vega",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "12345",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "profesional de salud"
+      ]
+    },
+    {
+      "username": "elena-arias",
+      "enabled": true,
+      "email": "elena.admin@este.test",
+      "firstName": "Elena",
+      "lastName": "Arias",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "12345",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "administrador de clínica"
+      ]
+    },
+    {
+      "username": "pedro-castro",
+      "enabled": true,
+      "email": "pedro.recepcion@este.test",
+      "firstName": "Pedro",
+      "lastName": "Castro",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "12345",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "recepción"
+      ]
+    },
+    {
+      "username": "laura-jimenez",
+      "enabled": true,
+      "email": "laura.jimenez@este.test",
+      "firstName": "Laura",
+      "lastName": "Jiménez",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "12345",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "profesional de salud"
+      ]
+    },
+    {
+      "username": "diego-salas",
+      "enabled": true,
+      "email": "diego.salas@este.test",
+      "firstName": "Diego",
+      "lastName": "Salas",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "12345",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "profesional de salud"
+      ]
+    },
+    {
+      "username": "sofia-leon",
+      "enabled": true,
+      "email": "sofia.admin@oeste.test",
+      "firstName": "Sofía",
+      "lastName": "León",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "12345",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "administrador de clínica"
+      ]
+    },
+    {
+      "username": "marco-ruiz",
+      "enabled": true,
+      "email": "marco.recepcion@oeste.test",
+      "firstName": "Marco",
+      "lastName": "Ruiz",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "12345",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "recepción"
+      ]
+    },
+    {
+      "username": "valeria-chacon",
+      "enabled": true,
+      "email": "valeria.chacon@oeste.test",
+      "firstName": "Valeria",
+      "lastName": "Chacón",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "12345",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "profesional de salud"
+      ]
+    },
+    {
+      "username": "andres-perez",
+      "enabled": true,
+      "email": "andres.perez@oeste.test",
+      "firstName": "Andrés",
+      "lastName": "Pérez",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "12345",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "profesional de salud"
+      ]
+    }
+  ]
+}

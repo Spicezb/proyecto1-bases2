@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const profesionalesService = require('../servicios/profesionales_servicio');
+const { autorizarRoles } = require('../middlewares/roles');
 
 // GET /api/profesionales - Consultar profesionales de la clínica
-router.get('/', async (req, res) => {
+router.get('/', autorizarRoles(['administrador de clínica', 'recepción', 'profesional de salud']), async (req, res) => {
     try {
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 4; // Temporal para pruebas locales (Administrador de clínica)
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
         const resultado = await profesionalesService.obtenerProfesionales(clinicId, auditPersonId);
 
@@ -36,11 +37,11 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/profesionales/:id - Consultar profesional por ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', autorizarRoles(['administrador de clínica', 'recepción', 'profesional de salud']), async (req, res) => {
     try {
         const { id } = req.params;
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 4; // Temporal para pruebas locales
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
         const resultado = await profesionalesService.obtenerProfesionalPorId(
             id,
@@ -81,10 +82,10 @@ router.get('/:id', async (req, res) => {
 });
 
 // GET /api/profesionales/:id/servicios - Consultar servicios de un profesional
-router.get('/:id/servicios', async (req, res) => {
+router.get('/:id/servicios', autorizarRoles(['administrador de clínica', 'recepción', 'profesional de salud']), async (req, res) => {
     try {
         const { id } = req.params;
-        const clinicId = 1; // Temporal para pruebas locales
+        const clinicId = req.user.clinicId;
 
         const resultado = await profesionalesService.obtenerServiciosProfesional(id, clinicId);
 
@@ -106,11 +107,11 @@ router.get('/:id/servicios', async (req, res) => {
     }
 });
 
-// POST /api/profesionales - Registrar nuevo profesional
-router.post('/', async (req, res) => {
+// POST /api/profesionales - Registrar nuevo profesional (Solo Administrador de clínica)
+router.post('/', autorizarRoles(['administrador de clínica']), async (req, res) => {
     try {
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 4; // Temporal para pruebas locales (Administrador de clínica)
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
         const resultado = await profesionalesService.registrarProfesional(
             req.body,
@@ -164,13 +165,13 @@ router.post('/', async (req, res) => {
     }
 });
 
-// POST /api/profesionales/:id/servicios - Habilitar servicio a un profesional
-router.post('/:id/servicios', async (req, res) => {
+// POST /api/profesionales/:id/servicios - Habilitar servicio a un profesional (Solo Administrador de clínica)
+router.post('/:id/servicios', autorizarRoles(['administrador de clínica']), async (req, res) => {
     try {
         const { id } = req.params;
         const { servicioId } = req.body;
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 4; // Temporal para pruebas locales (Administrador de clínica)
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
         const resultado = await profesionalesService.asociarServicio(
             id,
@@ -219,12 +220,12 @@ router.post('/:id/servicios', async (req, res) => {
     }
 });
 
-// PUT /api/profesionales/:id - Actualizar datos del profesional
-router.put('/:id', async (req, res) => {
+// PUT /api/profesionales/:id - Actualizar datos del profesional (Solo Administrador de clínica)
+router.put('/:id', autorizarRoles(['administrador de clínica']), async (req, res) => {
     try {
         const { id } = req.params;
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 4; // Temporal para pruebas locales (Administrador de clínica)
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
         const resultado = await profesionalesService.actualizarProfesional(
             id,
@@ -258,13 +259,6 @@ router.put('/:id', async (req, res) => {
             });
         }
 
-        if (error.status === 400 || error.status === 409) {
-            return res.status(error.status).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-
         res.status(500).json({
             status: 'error',
             message: 'Error interno del servidor.'
@@ -272,12 +266,12 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// DELETE /api/profesionales/:id - Desactivar profesional (baja lógica)
-router.delete('/:id', async (req, res) => {
+// DELETE /api/profesionales/:id - Desactivar profesional (baja lógica) (Solo Administrador de clínica)
+router.delete('/:id', autorizarRoles(['administrador de clínica']), async (req, res) => {
     try {
         const { id } = req.params;
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 4; // Temporal para pruebas locales (Administrador de clínica)
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
         const resultado = await profesionalesService.eliminarProfesional(
             id,
@@ -302,16 +296,6 @@ router.delete('/:id', async (req, res) => {
 
         if (error.message && error.message.includes('Solo el administrador')) {
             return res.status(403).json({
-                status: 'error',
-                message: error.message
-            });
-        }
-
-        if (
-            error.message ===
-            'No se puede desactivar un profesional con citas futuras reservadas.'
-        ) {
-            return res.status(409).json({
                 status: 'error',
                 message: error.message
             });

@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const bloqueosService = require('../servicios/bloqueos_servicio');
+const { autorizarRoles } = require('../middlewares/roles');
 
 // GET /api/bloqueos - Consultar bloqueos de agenda (opcional ?profesionalId=X)
-router.get('/', async (req, res) => {
+router.get('/', autorizarRoles(['administrador de clínica', 'recepción', 'profesional de salud']), async (req, res) => {
     try {
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 2; // Temporal para pruebas locales (Administrador de clínica)
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
         const { profesionalId } = req.query;
 
         const resultado = await bloqueosService.obtenerBloqueos(
@@ -34,11 +35,11 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/bloqueos/:id - Consultar un bloqueo por ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', autorizarRoles(['administrador de clínica', 'recepción', 'profesional de salud']), async (req, res) => {
     try {
         const { id } = req.params;
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 2; // Temporal para pruebas locales
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
         const resultado = await bloqueosService.obtenerBloqueoPorId(
             id,
@@ -71,11 +72,11 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// POST /api/bloqueos - Registrar un bloqueo de agenda
-router.post('/', async (req, res) => {
+// POST /api/bloqueos - Registrar un bloqueo de agenda (Solo Administrador de clínica)
+router.post('/', autorizarRoles(['administrador de clínica']), async (req, res) => {
     try {
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 2; // Temporal para pruebas locales (Administrador de clínica)
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
         const resultado = await bloqueosService.crearBloqueo(
             req.body,
@@ -94,7 +95,6 @@ router.post('/', async (req, res) => {
     } catch (error) {
         console.error('Error al crear bloqueo:', error);
 
-        // Violación de restricción de exclusión (traslape de bloqueos para el mismo profesional)
         if (
             error.code === '23P01' ||
             (error.message && error.message.includes('excludescheduleblocks'))
@@ -133,12 +133,12 @@ router.post('/', async (req, res) => {
     }
 });
 
-// PUT /api/bloqueos/:id - Modificar un bloqueo existente
-router.put('/:id', async (req, res) => {
+// PUT /api/bloqueos/:id - Modificar un bloqueo existente (Solo Administrador de clínica)
+router.put('/:id', autorizarRoles(['administrador de clínica']), async (req, res) => {
     try {
         const { id } = req.params;
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 2; // Temporal para pruebas locales (Administrador de clínica)
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
         const resultado = await bloqueosService.actualizarBloqueo(
             id,
@@ -196,12 +196,12 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// DELETE /api/bloqueos/:id - Desactivar un bloqueo (baja lógica)
-router.delete('/:id', async (req, res) => {
+// DELETE /api/bloqueos/:id - Desactivar un bloqueo (Solo Administrador de clínica)
+router.delete('/:id', autorizarRoles(['administrador de clínica']), async (req, res) => {
     try {
         const { id } = req.params;
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 2; // Temporal para pruebas locales (Administrador de clínica)
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
         const resultado = await bloqueosService.eliminarBloqueo(
             id,

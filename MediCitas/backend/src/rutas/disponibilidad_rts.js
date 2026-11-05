@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const disponibilidadService = require('../servicios/disponibilidad_servicio');
+const { autorizarRoles } = require('../middlewares/roles');
 
 // GET /api/disponibilidad/profesional - RF7: Espacios disponibles de un profesional en una fecha
-router.get('/profesional', async (req, res) => {
+router.get('/profesional', autorizarRoles(['administrador de clínica', 'recepción', 'profesional de salud']), async (req, res) => {
     try {
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 4; // Temporal para pruebas locales
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
         const { profesionalId, fecha } = req.query;
 
         if (!profesionalId || !fecha) {
@@ -56,10 +57,10 @@ router.get('/profesional', async (req, res) => {
 });
 
 // GET /api/disponibilidad/servicio - RF8: Disponibilidad por servicio en un rango de fechas
-router.get('/servicio', async (req, res) => {
+router.get('/servicio', autorizarRoles(['administrador de clínica', 'recepción', 'profesional de salud']), async (req, res) => {
     try {
-        const clinicId = 1; // Temporal para pruebas locales
-        const auditPersonId = 4; // Temporal para pruebas locales
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
         const { servicioId, fechaInicio, fechaFin } = req.query;
 
         if (!servicioId || !fechaInicio || !fechaFin) {
