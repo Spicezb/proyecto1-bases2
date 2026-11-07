@@ -24,7 +24,7 @@ function getKey(header, callback) {
     });
 }
 
-// Middleware para autenticar tokens JWT emitidos por Keycloak
+// Middleware para autenticar tokens JWT emitidos por Keycloak (Jason Web Token)
 function autenticarToken(req, res, next) {
     const authHeader = req.headers.authorization;
 
