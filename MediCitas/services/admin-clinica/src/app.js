@@ -14,9 +14,15 @@ const auditoriaRoutes = require('./rutas/auditoria_rts');
 
 app.use(express.json());
 
+const { isRedisReady } = require('./config/redis');
+
 // Healthcheck
 app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'ok', service: 'admin-clinica' });
+    res.status(200).json({
+        status: 'ok',
+        service: 'admin-clinica',
+        redis: isRedisReady() ? 'connected' : 'disconnected'
+    });
 });
 
 // Autenticación OIDC obligatoria

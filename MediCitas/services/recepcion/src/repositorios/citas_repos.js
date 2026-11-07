@@ -1,5 +1,19 @@
 const pool = require('../config/database');
 
+// Helper para obtener profesional y fecha de una cita para invalidación de caché
+async function obtenerDetalleCita(id, clinicId) {
+    const res = await pool.query(
+        `SELECT
+            a.clinicprofessionalid AS "profesionalId",
+            (a.date AT TIME ZONE c.clinictimezone)::date::text AS "fecha"
+         FROM appointments a
+         JOIN clinics c ON c.clinicid = a.clinicid
+         WHERE a.appointmentid = $1 AND a.clinicid = $2`,
+        [id, clinicId]
+    );
+    return res.rows[0] || null;
+}
+
 // RF9: Reservar una cita
 async function reservarCita(datos, clinicId, auditPersonId) {
     const { pacienteId, profesionalId, servicioId, fechaHora } = datos;
@@ -29,6 +43,8 @@ async function reservarCita(datos, clinicId, auditPersonId) {
 async function reprogramarCita(id, datos, clinicId, auditPersonId) {
     const { nuevoProfesionalId, nuevoServicioId, nuevaFechaHora } = datos;
 
+    const detalleOriginal = await obtenerDetalleCita(id, clinicId);
+
     await pool.query(
         `CALL reprogramarcita($1, $2, $3, $4, $5, $6)`,
         [
@@ -46,12 +62,16 @@ async function reprogramarCita(id, datos, clinicId, auditPersonId) {
         nuevoProfesionalId,
         nuevoServicioId,
         nuevaFechaHora,
+        profesionalOriginalId: detalleOriginal ? detalleOriginal.profesionalId : null,
+        fechaOriginal: detalleOriginal ? detalleOriginal.fecha : null,
         estado: 'reprogramada'
     };
 }
 
 // RF11: Cancelar una cita
 async function cancelarCita(id, motivo, clinicId, auditPersonId) {
+    const detalleOriginal = await obtenerDetalleCita(id, clinicId);
+
     await pool.query(
         `CALL cambiarestadocita($1, $2, $3, 4, $4)`,
         [clinicId, auditPersonId, id, motivo]
@@ -60,7 +80,9 @@ async function cancelarCita(id, motivo, clinicId, auditPersonId) {
     return {
         citaId: Number(id),
         estado: 'cancelada',
-        motivo
+        motivo,
+        profesionalId: detalleOriginal ? detalleOriginal.profesionalId : null,
+        fecha: detalleOriginal ? detalleOriginal.fecha : null
     };
 }
 

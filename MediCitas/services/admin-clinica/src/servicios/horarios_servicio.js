@@ -1,4 +1,5 @@
 const horariosRepositorio = require('../repositorios/horarios_repos');
+const redis = require('../config/redis');
 
 // Expresión regular para validar formato TIME (HH:MM o HH:MM:SS)
 const TIME_REGEX = /^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/;
@@ -164,6 +165,9 @@ async function crearHorario(datos, clinicId, auditPersonId) {
         auditPersonId
     );
 
+    // Invariante I8: Invalidar caché de disponibilidad del profesional
+    await redis.deleteKeysByPattern(`medicitas:disp:${clinicId}:prof:${validacion.datos.profesionalId}:*`);
+
     return { horario };
 }
 
@@ -196,6 +200,11 @@ async function actualizarHorario(id, datos, clinicId, auditPersonId) {
         };
     }
 
+    // Invariante I8: Invalidar caché de disponibilidad del profesional
+    if (horario.profesionalId) {
+        await redis.deleteKeysByPattern(`medicitas:disp:${clinicId}:prof:${horario.profesionalId}:*`);
+    }
+
     return { horario };
 }
 
@@ -208,6 +217,8 @@ async function eliminarHorario(id, clinicId, auditPersonId) {
         };
     }
 
+    const horarioActual = await horariosRepositorio.obtenerHorarioPorId(Number(id), clinicId, auditPersonId);
+
     const resultado = await horariosRepositorio.eliminarHorario(
         Number(id),
         clinicId,
@@ -219,6 +230,11 @@ async function eliminarHorario(id, clinicId, auditPersonId) {
             error: 'Horario no encontrado en esta clínica.',
             status: 404
         };
+    }
+
+    // Invariante I8: Invalidar caché de disponibilidad del profesional
+    if (horarioActual && horarioActual.profesionalId) {
+        await redis.deleteKeysByPattern(`medicitas:disp:${clinicId}:prof:${horarioActual.profesionalId}:*`);
     }
 
     return { resultado };

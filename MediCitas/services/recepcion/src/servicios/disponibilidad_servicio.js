@@ -1,4 +1,5 @@
 const disponibilidadRepositorio = require('../repositorios/disponibilidad_repos');
+const redis = require('../config/redis');
 
 // Validar formato YYYY-MM-DD
 function esFechaValida(fechaStr) {
@@ -9,7 +10,12 @@ function esFechaValida(fechaStr) {
     return !Number.isNaN(fecha.getTime()) && fecha.toISOString().slice(0, 10) === fechaStr;
 }
 
-// RF7: Disponibilidad de un profesional en una fecha
+// Generador de clave multi-tenant para Redis
+function construirClaveDisponibilidad(clinicId, profesionalId, fecha) {
+    return `medicitas:disp:${clinicId}:prof:${profesionalId}:date:${fecha}`;
+}
+
+// RF7: Disponibilidad de un profesional en una fecha (con Caché L2 en Redis)
 async function consultarDisponibilidadProfesional(clinicId, auditPersonId, profesionalId, fecha) {
     if (!/^[1-9]\d*$/.test(String(profesionalId))) {
         return {
@@ -25,6 +31,15 @@ async function consultarDisponibilidadProfesional(clinicId, auditPersonId, profe
         };
     }
 
+    const cacheKey = construirClaveDisponibilidad(clinicId, profesionalId, fecha);
+
+    // 1. Intentar lectura desde Redis (Cache-Aside)
+    const datosCacheados = await redis.getCache(cacheKey);
+    if (datosCacheados) {
+        return { espacios: datosCacheados, origen: 'cache' };
+    }
+
+    // 2. Cache Miss: Consultar la base de datos (PostgreSQL SP)
     const espacios = await disponibilidadRepositorio.consultarDisponibilidadProfesional(
         clinicId,
         auditPersonId,
@@ -32,7 +47,10 @@ async function consultarDisponibilidadProfesional(clinicId, auditPersonId, profe
         fecha
     );
 
-    return { espacios };
+    // 3. Escribir en Redis con TTL de respaldo (fail-safe)
+    await redis.setCache(cacheKey, espacios);
+
+    return { espacios, origen: 'db' };
 }
 
 // RF8: Disponibilidad por servicio en un rango de fechas
@@ -71,5 +89,6 @@ async function consultarDisponibilidadServicio(clinicId, auditPersonId, servicio
 
 module.exports = {
     consultarDisponibilidadProfesional,
-    consultarDisponibilidadServicio
+    consultarDisponibilidadServicio,
+    construirClaveDisponibilidad
 };

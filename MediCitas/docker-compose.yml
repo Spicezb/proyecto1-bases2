@@ -1,5 +1,5 @@
 services:
-  gateway:
+  gateway: #-------------------------- Gateway --------------------------
     build:
       context: ./gateway
       dockerfile: Dockerfile
@@ -11,7 +11,7 @@ services:
       - service-recepcion
       - service-profesional
 
-  service-plataforma:
+  service-plataforma: #-------------------------- Servicio plataforma --------------------------
     build:
       context: ./services/admin-plataforma
       dockerfile: Dockerfile
@@ -38,7 +38,7 @@ services:
       retries: 3
       start_period: 10s
 
-  service-clinica:
+  service-clinica: #-------------------------- Servicio clinica --------------------------
     build:
       context: ./services/admin-clinica
       dockerfile: Dockerfile
@@ -53,10 +53,15 @@ services:
       KEYCLOAK_URL: ${KEYCLOAK_URL}
       KEYCLOAK_REALM: ${KEYCLOAK_REALM}
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_TTL_SECONDS: ${REDIS_TTL_SECONDS}
     depends_on:
       postgres:
         condition: service_healthy
       keycloak:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3002/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
@@ -65,7 +70,7 @@ services:
       retries: 3
       start_period: 10s
 
-  service-recepcion:
+  service-recepcion: #-------------------------- Servicio recepcion --------------------------
     build:
       context: ./services/recepcion
       dockerfile: Dockerfile
@@ -80,10 +85,15 @@ services:
       KEYCLOAK_URL: ${KEYCLOAK_URL}
       KEYCLOAK_REALM: ${KEYCLOAK_REALM}
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_TTL_SECONDS: ${REDIS_TTL_SECONDS}
     depends_on:
       postgres:
         condition: service_healthy
       keycloak:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3003/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
@@ -92,7 +102,7 @@ services:
       retries: 3
       start_period: 10s
 
-  service-profesional:
+  service-profesional: #-------------------------- Servicio profesional --------------------------
     build:
       context: ./services/profesional
       dockerfile: Dockerfile
@@ -119,7 +129,7 @@ services:
       retries: 3
       start_period: 10s
 
-  postgres:
+  postgres: #-------------------------- PostgreSQL --------------------------
     image: postgres:17
     environment:
       POSTGRES_DB: ${DB_NAME}
@@ -136,7 +146,7 @@ services:
       timeout: 5s
       retries: 10
 
-  keycloak:
+  keycloak: #-------------------------- Keycloak --------------------------
     image: quay.io/keycloak/keycloak:26.1
     command: ["start-dev", "--import-realm"]
     environment:
@@ -153,5 +163,19 @@ services:
       retries: 5
       start_period: 25s
 
+  redis: #-------------------------- Redis --------------------------
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:${REDIS_PORT}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
 volumes:
   postgres_data:
+  redis_data:

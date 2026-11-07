@@ -11,9 +11,15 @@ const disponibilidadRoutes = require('./rutas/disponibilidad_rts');
 
 app.use(express.json());
 
+const { isRedisReady } = require('./config/redis');
+
 // Healthcheck
 app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'ok', service: 'recepcion' });
+    res.status(200).json({
+        status: 'ok',
+        service: 'recepcion',
+        redis: isRedisReady() ? 'connected' : 'disconnected'
+    });
 });
 
 // Autenticación OIDC obligatoria

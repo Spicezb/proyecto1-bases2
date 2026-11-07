@@ -1,4 +1,5 @@
 const bloqueosRepositorio = require('../repositorios/bloqueos_repos');
+const redis = require('../config/redis');
 
 // Validar fecha en formato ISO o timestamp parseable
 function esFechaValida(fechaStr) {
@@ -150,6 +151,9 @@ async function crearBloqueo(datos, clinicId, auditPersonId) {
         auditPersonId
     );
 
+    // Invariante I8: Invalidar caché de disponibilidad del profesional
+    await redis.deleteKeysByPattern(`medicitas:disp:${clinicId}:prof:${validacion.datos.profesionalId}:*`);
+
     return { bloqueo };
 }
 
@@ -182,6 +186,11 @@ async function actualizarBloqueo(id, datos, clinicId, auditPersonId) {
         };
     }
 
+    // Invariante I8: Invalidar caché de disponibilidad del profesional
+    if (bloqueo.profesionalId) {
+        await redis.deleteKeysByPattern(`medicitas:disp:${clinicId}:prof:${bloqueo.profesionalId}:*`);
+    }
+
     return { bloqueo };
 }
 
@@ -194,6 +203,8 @@ async function eliminarBloqueo(id, clinicId, auditPersonId) {
         };
     }
 
+    const bloqueoActual = await bloqueosRepositorio.obtenerBloqueoPorId(Number(id), clinicId, auditPersonId);
+
     const resultado = await bloqueosRepositorio.eliminarBloqueo(
         Number(id),
         clinicId,
@@ -205,6 +216,11 @@ async function eliminarBloqueo(id, clinicId, auditPersonId) {
             error: 'Bloqueo no encontrado en esta clínica.',
             status: 404
         };
+    }
+
+    // Invariante I8: Invalidar caché de disponibilidad del profesional
+    if (bloqueoActual && bloqueoActual.profesionalId) {
+        await redis.deleteKeysByPattern(`medicitas:disp:${clinicId}:prof:${bloqueoActual.profesionalId}:*`);
     }
 
     return { resultado };
