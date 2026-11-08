@@ -211,6 +211,35 @@ BEGIN
         RAISE EXCEPTION 'El servicio no está disponible en esta clínica.';
     END IF;
 
+    
+    -- Verificar que el profesional tenga la especialidad
+    -- requerida por el servicio.
+    IF NOT EXISTS (
+        SELECT 1
+        FROM clinicprofessionals cp
+        INNER JOIN professionals p
+            ON p.professionalid = cp.professionalid
+        INNER JOIN professionalspecialties ps
+            ON ps.professionalid = p.professionalid
+        INNER JOIN clinicservices cs
+            ON cs.clinicserviceid = p_clinicserviceid
+        INNER JOIN services s
+            ON s.serviceid = cs.serviceid
+        INNER JOIN specialties esp
+            ON esp.specialtyid = s.specialtyid
+        WHERE cp.clinicprofessionalid = p_clinicprofessionalid
+          AND cp.clinicid = p_clinicid
+          AND p.isactive = TRUE
+          AND ps.specialtyid = s.specialtyid
+          AND ps.isactive = TRUE
+          AND cs.clinicid = p_clinicid
+          AND s.isactive = TRUE
+          AND esp.isactive = TRUE
+    ) THEN
+        RAISE EXCEPTION
+            'El profesional no posee la especialidad requerida para este servicio.';
+    END IF;
+
     INSERT INTO clinicprofessionalservices (
         clinicprofessionalid,
         clinicserviceid,

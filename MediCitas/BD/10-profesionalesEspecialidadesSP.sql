@@ -179,3 +179,70 @@ BEGIN
     ORDER BY u.lastname, u.name;
 END;
 $$;
+
+CREATE OR REPLACE PROCEDURE asignarespecialidad(
+    p_clinicid INT,
+    p_auditpersonid INT,
+    p_professionalid INT,
+    p_specialtyid INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Solo un administrador activo de la clínica.
+    IF NOT EXISTS (
+        SELECT 1
+        FROM users u
+        WHERE u.userid = p_auditpersonid
+          AND u.clinicid = p_clinicid
+          AND u.roleid = 2
+          AND u.isactive = TRUE
+    ) THEN
+        RAISE EXCEPTION
+            'Solo el administrador de clínica puede asignar especialidades.';
+    END IF;
+
+    -- El profesional debe pertenecer a esa clínica.
+    IF NOT EXISTS (
+        SELECT 1
+        FROM clinicprofessionals cp
+        JOIN professionals p
+            ON p.professionalid = cp.professionalid
+        WHERE cp.professionalid = p_professionalid
+          AND cp.clinicid = p_clinicid
+          AND cp.isactive = TRUE
+          AND p.isactive = TRUE
+    ) THEN
+        RAISE EXCEPTION
+            'El profesional no pertenece activamente a la clínica.';
+    END IF;
+
+    -- La especialidad debe existir y estar activa.
+    IF NOT EXISTS (
+        SELECT 1
+        FROM specialties
+        WHERE specialtyid = p_specialtyid
+          AND isactive = TRUE
+    ) THEN
+        RAISE EXCEPTION
+            'La especialidad no existe o está inactiva.';
+    END IF;
+
+    -- Crear la asociación o reactivarla si ya existía.
+    INSERT INTO professionalspecialties (
+        professionalid,
+        specialtyid,
+        auditpersonid
+    )
+    VALUES (
+        p_professionalid,
+        p_specialtyid,
+        p_auditpersonid
+    )
+    ON CONFLICT (professionalid, specialtyid)
+    DO UPDATE SET
+        isactive = TRUE,
+        updatedat = NOW(),
+        auditpersonid = EXCLUDED.auditpersonid;
+END;
+$$;
