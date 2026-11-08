@@ -21,8 +21,8 @@ services:
       PGHOST: ${DB_HOST}
       PGPORT: ${DB_PORT}
       PGDATABASE: ${DB_NAME}
-      PGUSER: ${DB_USER}
-      PGPASSWORD: ${DB_PASSWORD}
+      ADMIN_GENERAL_USER: ${ADMIN_GENERAL_USER}
+      ADMIN_GENERAL_PASSWORD: ${ADMIN_GENERAL_PASSWORD}
       KEYCLOAK_URL: ${KEYCLOAK_URL}
       KEYCLOAK_REALM: ${KEYCLOAK_REALM}
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
@@ -48,8 +48,8 @@ services:
       PGHOST: ${DB_HOST}
       PGPORT: ${DB_PORT}
       PGDATABASE: ${DB_NAME}
-      PGUSER: ${DB_USER}
-      PGPASSWORD: ${DB_PASSWORD}
+      ADMIN_CLINICA_USER: ${ADMIN_CLINICA_USER}
+      ADMIN_CLINICA_PASSWORD: ${ADMIN_CLINICA_PASSWORD}
       KEYCLOAK_URL: ${KEYCLOAK_URL}
       KEYCLOAK_REALM: ${KEYCLOAK_REALM}
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
@@ -80,8 +80,8 @@ services:
       PGHOST: ${DB_HOST}
       PGPORT: ${DB_PORT}
       PGDATABASE: ${DB_NAME}
-      PGUSER: ${DB_USER}
-      PGPASSWORD: ${DB_PASSWORD}
+      RECEPCION_USER: ${RECEPCION_USER}
+      RECEPCION_PASSWORD: ${RECEPCION_PASSWORD}
       KEYCLOAK_URL: ${KEYCLOAK_URL}
       KEYCLOAK_REALM: ${KEYCLOAK_REALM}
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
@@ -112,8 +112,8 @@ services:
       PGHOST: ${DB_HOST}
       PGPORT: ${DB_PORT}
       PGDATABASE: ${DB_NAME}
-      PGUSER: ${DB_USER}
-      PGPASSWORD: ${DB_PASSWORD}
+      PROFESIONAL_USER: ${PROFESIONAL_USER}
+      PROFESIONAL_PASSWORD: ${PROFESIONAL_PASSWORD}
       KEYCLOAK_URL: ${KEYCLOAK_URL}
       KEYCLOAK_REALM: ${KEYCLOAK_REALM}
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
@@ -135,6 +135,14 @@ services:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+      ADMIN_GENERAL_USER: ${ADMIN_GENERAL_USER}
+      ADMIN_CLINICA_USER: ${ADMIN_CLINICA_USER}
+      RECEPCION_USER: ${RECEPCION_USER}
+      PROFESIONAL_USER: ${PROFESIONAL_USER}
+      ADMIN_GENERAL_PASSWORD: ${ADMIN_GENERAL_PASSWORD}
+      ADMIN_CLINICA_PASSWORD: ${ADMIN_CLINICA_PASSWORD}
+      RECEPCION_PASSWORD: ${RECEPCION_PASSWORD}
+      PROFESIONAL_PASSWORD: ${PROFESIONAL_PASSWORD}
     ports:
       - "127.0.0.1:${DB_PORT}:5432"
     volumes:
@@ -148,7 +156,7 @@ services:
 
   keycloak: #-------------------------- Keycloak --------------------------
     image: quay.io/keycloak/keycloak:26.1
-    command: ["start-dev", "--import-realm"]
+    command: ["start-dev", "--import-realm", "--health-enabled=true"]
     environment:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
@@ -157,7 +165,7 @@ services:
     volumes:
       - ./keycloak:/opt/keycloak/data/import
     healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080; echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: 127.0.0.1\\r\\nConnection: close\\r\\n\\r\\n' >&3; cat <&3 | grep -q '200 OK'"]
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000; echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; cat <&3 | grep -q '200 OK'"]
       interval: 10s
       timeout: 5s
       retries: 5
