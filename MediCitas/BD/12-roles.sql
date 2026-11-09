@@ -176,3 +176,10 @@ BEGIN
 
 END
 $$;
+
+
+-- Permisos para consultar profesionales y sus especialidades
+GRANT SELECT ON TABLE
+    public.professionalspecialties,
+    public.specialties
+TO rol_admin_clinica;

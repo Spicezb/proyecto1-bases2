@@ -246,3 +246,89 @@ BEGIN
         auditpersonid = EXCLUDED.auditpersonid;
 END;
 $$;
+
+-- Actualización atómica de licencia y especialidades, acotada por clínica.
+CREATE OR REPLACE PROCEDURE public.actualizarprofesionalespecialidades(
+    p_clinicid INT,
+    p_auditpersonid INT,
+    p_clinicprofessionalid INT,
+    p_licenseid VARCHAR(15),
+    p_specialties INT[]
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_professionalid INT;
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM public.users u
+        WHERE u.userid = p_auditpersonid AND u.clinicid = p_clinicid
+          AND u.roleid = 2 AND u.isactive = TRUE
+    ) THEN
+        RAISE EXCEPTION 'Solo un administrador activo de la clínica puede actualizar profesionales.';
+    END IF;
+
+    SELECT cp.professionalid INTO v_professionalid
+    FROM public.clinicprofessionals cp
+    JOIN public.professionals p ON p.professionalid = cp.professionalid
+    WHERE cp.clinicprofessionalid = p_clinicprofessionalid
+      AND cp.clinicid = p_clinicid AND cp.isactive AND p.isactive
+    FOR UPDATE OF cp, p;
+    IF v_professionalid IS NULL THEN
+        RAISE EXCEPTION 'Profesional no encontrado en esta clínica.';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM public.clinicprofessionals
+        WHERE professionalid = v_professionalid
+          AND clinicid <> p_clinicid AND isactive = TRUE
+    ) THEN
+        RAISE EXCEPTION 'No se pueden modificar datos globales de un profesional compartido.';
+    END IF;
+
+    IF p_specialties IS NOT NULL THEN
+        IF EXISTS (SELECT 1 FROM unnest(p_specialties) x WHERE x IS NULL)
+           OR (SELECT count(*) FROM unnest(p_specialties)) <>
+              (SELECT count(DISTINCT x) FROM unnest(p_specialties) x)
+           OR EXISTS (
+             SELECT 1 FROM unnest(p_specialties) x
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM public.specialties s
+                 WHERE s.specialtyid = x AND s.isactive = TRUE
+             )
+           ) THEN
+            RAISE EXCEPTION 'Una o más especialidades son inválidas o están duplicadas.';
+        END IF;
+
+        IF EXISTS (
+            SELECT 1 FROM public.clinicprofessionalservices cps
+            JOIN public.clinicservices cs ON cs.clinicserviceid = cps.clinicserviceid
+            JOIN public.services s ON s.serviceid = cs.serviceid
+            WHERE cps.clinicprofessionalid = p_clinicprofessionalid
+              AND cps.isactive AND cs.isactive AND s.isactive
+              AND NOT (s.specialtyid = ANY(p_specialties))
+        ) THEN
+            RAISE EXCEPTION 'No se pueden retirar especialidades de servicios habilitados.';
+        END IF;
+    END IF;
+
+    UPDATE public.professionals
+    SET licenseid = COALESCE(p_licenseid, licenseid), updatedat = NOW()
+    WHERE professionalid = v_professionalid;
+
+    IF p_specialties IS NOT NULL THEN
+        UPDATE public.professionalspecialties
+        SET isactive = FALSE, updatedat = NOW(), auditpersonid = p_auditpersonid
+        WHERE professionalid = v_professionalid AND isactive = TRUE
+          AND NOT (specialtyid = ANY(p_specialties));
+
+        INSERT INTO public.professionalspecialties
+            (professionalid, specialtyid, auditpersonid)
+        SELECT v_professionalid, x, p_auditpersonid
+        FROM unnest(p_specialties) AS x
+        ON CONFLICT (professionalid, specialtyid)
+        DO UPDATE SET isactive = TRUE, updatedat = NOW(),
+                      auditpersonid = EXCLUDED.auditpersonid;
+    END IF;
+END;
+$$;

@@ -47,19 +47,10 @@ function autenticarToken(req, res, next) {
         const providerId = decoded.preferred_username || decoded.sub;
 
         try {
-            const query = `
-                SELECT
-                    u.userid,
-                    u.clinicid,
-                    u.roleid,
-                    r.name AS rolename
-                FROM users u
-                INNER JOIN roles r ON u.roleid = r.roleid
-                WHERE u.providerid = $1
-                  AND u.isactive = TRUE
-            `;
-
-            const resultado = await pool.query(query, [providerId]);
+            const resultado = await pool.query(
+                'SELECT * FROM public.obtenercontextousuario($1::VARCHAR)',
+                [providerId]
+            );
 
             if (resultado.rows.length === 0) {
                 return res.status(401).json({
@@ -69,6 +60,16 @@ function autenticarToken(req, res, next) {
             }
 
             const dbUser = resultado.rows[0];
+
+            // Verificar que el rol registrado en PostgreSQL coincida con alguno de los roles autenticados en Keycloak.
+            const rolesKeycloak = decoded.realm_access?.roles || [];
+
+            if (!rolesKeycloak.includes(dbUser.rolename)) {
+                return res.status(403).json({
+                    status: 'error',
+                    message: 'El rol autenticado no coincide con los permisos del usuario.'
+                });
+            }
 
             req.user = {
                 userId: dbUser.userid,
