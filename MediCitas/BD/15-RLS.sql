@@ -133,16 +133,6 @@ FOR ALL
 USING (clinicid = obtener_clinic_id())
 WITH CHECK (clinicid = obtener_clinic_id());
 
-
-ALTER TABLE clinics ENABLE ROW LEVEL SECURITY;
-ALTER TABLE clinics FORCE ROW LEVEL SECURITY;
-
-CREATE POLICY clinics_isolation
-ON clinics
-FOR ALL
-USING (clinicid = obtener_clinic_id())
-WITH CHECK (clinicid = obtener_clinic_id());
-
 -- por relación
 
 ALTER TABLE public.clinicprofessionalservices

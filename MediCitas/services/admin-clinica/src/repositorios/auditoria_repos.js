@@ -4,34 +4,45 @@ const pool = require('../config/database');
 async function consultarLogs(clinicId, auditPersonId, filtros = {}) {
     const { personaId, pacienteId, fechaInicio, fechaFin } = filtros;
 
-    const query = `
+    const client = await pool.connect();
 
-        SELECT set_config('app.clinic_id', $7, true);
+    try {
+        await client.query('BEGIN');
 
-        SELECT
-            auditlogid AS id,
-            auditpersonid AS "usuarioId",
-            auditactionid AS "accionId",
-            audittableid AS "tablaId",
-            auditrecordid AS "registroId",
-            auditresultid AS "resultadoId",
-            clinicpatientid AS "pacienteId",
-            createdat AS "fechaHora"
-        FROM consultarlogs($1, $2, $3, $4, $5, $6)
-    `;
+        await client.query( "select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
 
-    const resultado = await pool.query(query, [
-        clinicId,
-        auditPersonId,
-        personaId || null,
-        pacienteId || null,
-        fechaInicio || null,
-        fechaFin || null,
-        String(clinicId)
-    ]);
+        const resultado  = await client.query(`
+
+            SELECT
+                auditlogid AS id,
+                auditpersonid AS "usuarioId",
+                auditactionid AS "accionId",
+                audittableid AS "tablaId",
+                auditrecordid AS "registroId",
+                auditresultid AS "resultadoId",
+                clinicpatientid AS "pacienteId",
+                createdat AS "fechaHora"
+            FROM consultarlogs($1, $2, $3, $4, $5, $6)
+        `,[
+            clinicId,
+            auditPersonId,
+            personaId || null,
+            pacienteId || null,
+            fechaInicio || null,
+            fechaFin || null,
+            String(clinicId)
+        ]);
+
+        await client.query('COMMIT');
 
     return resultado.rows;
-}
+
+} catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+} finally {
+    client.release();
+}}
 
 module.exports = {
     consultarLogs
