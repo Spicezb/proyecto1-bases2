@@ -3,6 +3,9 @@ const pool = require('../config/database');
 // Consultar los horarios semanales (opcionalmente filtrados por profesional)
 async function obtenerHorarios(clinicId, auditPersonId, profesionalId = null) {
     const query = `
+
+        SELECT set_config('app.clinic_id', $4, true);
+
         SELECT DISTINCT
             professionalscheduleid AS id,
             clinicprofessionalid AS "profesionalId",
@@ -18,7 +21,8 @@ async function obtenerHorarios(clinicId, auditPersonId, profesionalId = null) {
     const resultado = await pool.query(query, [
         clinicId,
         auditPersonId,
-        profesionalId || null
+        profesionalId || null,
+        String(clinicId)
     ]);
 
     return resultado.rows;
@@ -27,6 +31,9 @@ async function obtenerHorarios(clinicId, auditPersonId, profesionalId = null) {
 // Consultar un horario específico por su ID
 async function obtenerHorarioPorId(id, clinicId, auditPersonId) {
     const query = `
+
+        SELECT set_config('app.clinic_id', $4, true);
+
         SELECT DISTINCT
             professionalscheduleid AS id,
             clinicprofessionalid AS "profesionalId",
@@ -38,7 +45,7 @@ async function obtenerHorarioPorId(id, clinicId, auditPersonId) {
         WHERE professionalscheduleid = $3
     `;
 
-    const resultado = await pool.query(query, [clinicId, auditPersonId, id]);
+    const resultado = await pool.query(query, [clinicId, auditPersonId, id,String(clinicId)]);
 
     return resultado.rows[0];
 }
@@ -48,14 +55,18 @@ async function crearHorario(datos, clinicId, auditPersonId) {
     const { profesionalId, dia, horaInicio, horaFin } = datos;
 
     await pool.query(
-        `CALL crearhorario($1, $2, $3, $4, $5, $6)`,
+        `
+        SELECT set_config('app.clinic_id', $7, true);
+        
+        CALL crearhorario($1, $2, $3, $4, $5, $6)`,
         [
             clinicId,
             auditPersonId,
             profesionalId,
             dia,
             horaInicio,
-            horaFin
+            horaFin,
+            String(clinicId)
         ]
     );
 
@@ -72,7 +83,10 @@ async function actualizarHorario(id, datos, clinicId, auditPersonId) {
     const { dia, horaInicio, horaFin, activo } = datos;
 
     await pool.query(
-        `CALL actualizarhorario($1, $2, $3, $4, $5, $6, $7)`,
+        `
+        SELECT set_config('app.clinic_id', $8, true);
+        
+        CALL actualizarhorario($1, $2, $3, $4, $5, $6, $7)`,
         [
             clinicId,
             auditPersonId,
@@ -80,7 +94,8 @@ async function actualizarHorario(id, datos, clinicId, auditPersonId) {
             dia,
             horaInicio,
             horaFin,
-            activo
+            activo,
+            String(clinicId)
         ]
     );
 
@@ -96,7 +111,10 @@ async function eliminarHorario(id, clinicId, auditPersonId) {
     }
 
     await pool.query(
-        `CALL actualizarhorario($1, $2, $3, $4, $5, $6, $7)`,
+        `
+        SELECT set_config('app.clinic_id', $8, true);
+        
+        CALL actualizarhorario($1, $2, $3, $4, $5, $6, $7)`,
         [
             clinicId,
             auditPersonId,
@@ -104,7 +122,8 @@ async function eliminarHorario(id, clinicId, auditPersonId) {
             horarioActual.dia,
             horarioActual.horaInicio,
             horarioActual.horaFin,
-            false
+            false,
+            String(clinicId)
         ]
     );
 

@@ -4,6 +4,9 @@ const pool = require('../config/database');
 // Obtener profesionales de la clínica
 async function obtenerProfesionales(clinicId, auditPersonId) {
     const query = `
+
+        SELECT set_config('app.clinic_id', $3, true);
+
         SELECT
             cp.clinicprofessionalid AS id,
             cp.professionalid AS "profesionalId",
@@ -38,7 +41,8 @@ async function obtenerProfesionales(clinicId, auditPersonId) {
 
     const resultado = await pool.query(query, [
         clinicId,
-        auditPersonId
+        auditPersonId,
+        String(clinicId)
     ]);
 
     return resultado.rows;
@@ -47,6 +51,9 @@ async function obtenerProfesionales(clinicId, auditPersonId) {
 // Obtener profesional por clinicprofessionalid
 async function obtenerProfesionalPorId(id, clinicId, auditPersonId) {
     const query = `
+
+        SELECT set_config('app.clinic_id', $4, true);
+
         SELECT
             cp.clinicprofessionalid AS id,
             cp.professionalid AS "profesionalId",
@@ -81,7 +88,8 @@ async function obtenerProfesionalPorId(id, clinicId, auditPersonId) {
     const resultado = await pool.query(query, [
         clinicId,
         auditPersonId,
-        id
+        id,
+        String(clinicId)
     ]);
 
     return resultado.rows[0];
@@ -96,8 +104,11 @@ async function registrarProfesional(datos, clinicId, auditPersonId) {
         await client.query('BEGIN');
 
         await client.query(
-            'CALL crearprofesional($1, $2, $3, $4)',
-            [clinicId, auditPersonId, usuarioId, licencia]
+            `
+            SELECT set_config('app.clinic_id', $5, true);
+            
+            CALL crearprofesional($1, $2, $3, $4)`,
+            [clinicId, auditPersonId, usuarioId, licencia,String(clinicId)]
         );
 
         const resultado = await client.query(`
@@ -193,13 +204,17 @@ async function eliminarProfesional(id, clinicId, auditPersonId) {
     }
 
     await pool.query(
-        'CALL actualizarprofesional($1, $2, $3, $4, $5)',
+        `
+        SELECT set_config('app.clinic_id', $6, true);
+        
+        CALL actualizarprofesional($1, $2, $3, $4, $5)`,
         [
             clinicId,
             auditPersonId,
             actual.profesionalId,
             actual.licencia,
-            false
+            false,
+            String(clinicId)
         ]
     );
 
@@ -212,12 +227,16 @@ async function eliminarProfesional(id, clinicId, auditPersonId) {
 // Asociar un servicio al profesional
 async function asociarServicio(id, servicioId, clinicId, auditPersonId) {
     await pool.query(
-        'CALL asignarservicioprofesional($1, $2, $3, $4)',
+        `
+        SELECT set_config('app.clinic_id', $5, true);
+        
+        CALL asignarservicioprofesional($1, $2, $3, $4)`,
         [
             clinicId,
             auditPersonId,
             id,
-            servicioId
+            servicioId,
+            String(clinicId)
         ]
     );
 
@@ -230,6 +249,8 @@ async function asociarServicio(id, servicioId, clinicId, auditPersonId) {
 // Consultar servicios habilitados
 async function obtenerServiciosProfesional(id, clinicId) {
     const query = `
+        SELECT set_config('app.clinic_id', $3, true);
+
         SELECT
             cps.clinicprofessionalserviceid AS id,
             cs.clinicserviceid AS "servicioId",
@@ -250,7 +271,7 @@ async function obtenerServiciosProfesional(id, clinicId) {
         ORDER BY s.name ASC
     `;
 
-    const resultado = await pool.query(query, [id, clinicId]);
+    const resultado = await pool.query(query, [id, clinicId,String(clinicId)]);
     return resultado.rows;
 }
 
@@ -259,7 +280,12 @@ async function actualizarProfesional(id, datos, clinicId, auditPersonId) {
     const client = await pool.connect();
 
     try {
-        await client.query('BEGIN');
+        await client.query(`
+            BEGIN;
+
+            SELECT set_config('app.clinic_id', $1, true);
+
+            `,[String(clinicId)]);
 
         const previo = await client.query(`
             SELECT

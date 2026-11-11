@@ -5,6 +5,9 @@ async function consultarLogs(clinicId, auditPersonId, filtros = {}) {
     const { personaId, pacienteId, fechaInicio, fechaFin } = filtros;
 
     const query = `
+
+        SELECT set_config('app.clinic_id', $7, true);
+
         SELECT
             auditlogid AS id,
             auditpersonid AS "usuarioId",
@@ -23,7 +26,8 @@ async function consultarLogs(clinicId, auditPersonId, filtros = {}) {
         personaId || null,
         pacienteId || null,
         fechaInicio || null,
-        fechaFin || null
+        fechaFin || null,
+        String(clinicId)
     ]);
 
     return resultado.rows;

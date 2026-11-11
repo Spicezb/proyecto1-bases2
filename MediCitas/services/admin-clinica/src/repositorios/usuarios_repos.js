@@ -16,7 +16,9 @@ async function crearUsuario(datos, clinicId, auditPersonId) {
     const client = await pool.connect();
 
     try {
-        await client.query('BEGIN');
+        await client.query(`BEGIN;
+            SELECT set_config('app.clinic_id', $1, true);
+            `,[String(clinicId)]);
 
         await client.query(
             'CALL crearusuario($1, $2, $3, $4, $5, $6, $7, $8, $9)',
@@ -72,7 +74,9 @@ async function cambiarRolUsuario(userId, newRoleId, clinicId, auditPersonId) {
     const client = await pool.connect();
 
     try {
-        await client.query('BEGIN');
+        await client.query(`BEGIN;
+            SELECT set_config('app.clinic_id', $1, true);
+            `,[String(clinicId)]);
 
         await client.query(
             'CALL cambiarrolusuario($1, $2, $3, $4)',
@@ -115,8 +119,11 @@ async function cambiarRolUsuario(userId, newRoleId, clinicId, auditPersonId) {
 // RF2: Desactivar usuario
 async function desactivarUsuario(userId, clinicId, auditPersonId) {
     await pool.query(
-        'CALL desactivarusuario($1, $2, $3)',
-        [clinicId, auditPersonId, userId]
+        `
+        SELECT set_config('app.clinic_id', $4, true);
+        
+        CALL desactivarusuario($1, $2, $3)`,
+        [clinicId, auditPersonId, userId,String(clinicId)]
     );
 
     return {
@@ -128,6 +135,8 @@ async function desactivarUsuario(userId, clinicId, auditPersonId) {
 // RF2: Consultar usuarios de la clínica
 async function obtenerUsuarios(clinicId, auditPersonId) {
     const query = `
+        SELECT set_config('app.clinic_id', $3, true);
+
         SELECT
             userid AS id,
             providerid,
@@ -144,7 +153,8 @@ async function obtenerUsuarios(clinicId, auditPersonId) {
 
     const resultado = await pool.query(query, [
         clinicId,
-        auditPersonId
+        auditPersonId,
+        String(clinicId)
     ]);
 
     return resultado.rows;

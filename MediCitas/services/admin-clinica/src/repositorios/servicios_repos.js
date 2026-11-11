@@ -3,6 +3,8 @@ const pool = require('../config/database');
 // Consultar todos los servicios médicos de la clínica usando la función de PostgreSQL
 async function obtenerServicios(clinicId, auditPersonId) {
     const query = `
+        SELECT set_config('app.clinic_id', $3, true);
+
         SELECT
             clinicserviceid AS id,
             serviceid AS "servicioId",
@@ -15,13 +17,15 @@ async function obtenerServicios(clinicId, auditPersonId) {
         ORDER BY name ASC
     `;
 
-    const resultado = await pool.query(query, [clinicId, auditPersonId]);
+    const resultado = await pool.query(query, [clinicId, auditPersonId,String(clinicId)]);
     return resultado.rows;
 }
 
 // Consultar un servicio médico por su ID
 async function obtenerServicioPorId(id, clinicId, auditPersonId) {
     const query = `
+        SELECT set_config('app.clinic_id', $4, true);
+
         SELECT
             clinicserviceid AS id,
             serviceid AS "servicioId",
@@ -33,7 +37,7 @@ async function obtenerServicioPorId(id, clinicId, auditPersonId) {
         WHERE clinicserviceid = $3
     `;
 
-    const resultado = await pool.query(query, [clinicId, auditPersonId, id]);
+    const resultado = await pool.query(query, [clinicId, auditPersonId, id,String(clinicId)]);
     return resultado.rows[0];
 }
 
@@ -42,8 +46,11 @@ async function registrarServicio(datos, clinicId, auditPersonId) {
     const { nombre, especialidadId, duracion } = datos;
 
     await pool.query(
-        `CALL crearservicio($1, $2, $3, $4, $5)`,
-        [clinicId, auditPersonId, nombre, especialidadId, duracion]
+        `
+        SELECT set_config('app.clinic_id', $6, true);
+
+        CALL crearservicio($1, $2, $3, $4, $5)`,
+        [clinicId, auditPersonId, nombre, especialidadId, duracion,String(clinicId)]
     );
 
     // Consultar el servicio recién asociado a la clínica
@@ -70,8 +77,10 @@ async function actualizarServicio(id, datos, clinicId, auditPersonId) {
     const { duracion, activo } = datos;
 
     await pool.query(
-        `CALL actualizarservicio($1, $2, $3, $4, $5)`,
-        [clinicId, auditPersonId, id, duracion, activo]
+        `SELECT set_config('app.clinic_id', $6, true);
+        
+        CALL actualizarservicio($1, $2, $3, $4, $5)`,
+        [clinicId, auditPersonId, id, duracion, activo,String(clinicId)]
     );
 
     return await obtenerServicioPorId(id, clinicId, auditPersonId);
@@ -86,8 +95,11 @@ async function eliminarServicio(id, clinicId, auditPersonId) {
     }
 
     await pool.query(
-        `CALL actualizarservicio($1, $2, $3, $4, $5)`,
-        [clinicId, auditPersonId, id, servicioActual.duracion, false]
+        `
+        SELECT set_config('app.clinic_id', $6, true);
+        
+        CALL actualizarservicio($1, $2, $3, $4, $5)`,
+        [clinicId, auditPersonId, id, servicioActual.duracion, false,String(clinicId)]
     );
 
     return { id: Number(id), activo: false };

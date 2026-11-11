@@ -3,6 +3,9 @@ const pool = require('../config/database');
 // Consultar bloqueos de agenda de la clínica (opcionalmente filtrados por profesional)
 async function obtenerBloqueos(clinicId, auditPersonId, profesionalId = null) {
     const query = `
+
+        SELECT set_config('app.clinic_id', $3, true);
+
         SELECT
             sb.scheduleblockid AS id,
             sb.clinicprofessionalid AS "profesionalId",
@@ -22,13 +25,16 @@ async function obtenerBloqueos(clinicId, auditPersonId, profesionalId = null) {
         ORDER BY sb.startdatetime ASC
     `;
 
-    const resultado = await pool.query(query, [clinicId, profesionalId || null]);
+    const resultado = await pool.query(query, [clinicId, profesionalId || null, String(clinicId)]);
     return resultado.rows;
 }
 
 // Consultar un bloqueo específico por su ID
 async function obtenerBloqueoPorId(id, clinicId, auditPersonId) {
     const query = `
+
+        SELECT set_config('app.clinic_id', $3, true);
+
         SELECT
             sb.scheduleblockid AS id,
             sb.clinicprofessionalid AS "profesionalId",
@@ -46,7 +52,7 @@ async function obtenerBloqueoPorId(id, clinicId, auditPersonId) {
           AND sb.scheduleblockid = $2
     `;
 
-    const resultado = await pool.query(query, [clinicId, id]);
+    const resultado = await pool.query(query, [clinicId, id, String(clinicId)]);
     return resultado.rows[0];
 }
 
@@ -55,8 +61,11 @@ async function crearBloqueo(datos, clinicId, auditPersonId) {
     const { profesionalId, fechaInicio, fechaFin, motivo } = datos;
 
     await pool.query(
-        `CALL crearbloqueo($1, $2, $3, $4, $5, $6)`,
-        [clinicId, auditPersonId, profesionalId, fechaInicio, fechaFin, motivo]
+        `
+        SELECT set_config('app.clinic_id', $7, true);
+
+        CALL crearbloqueo($1, $2, $3, $4, $5, $6)`,
+        [clinicId, auditPersonId, profesionalId, fechaInicio, fechaFin, motivo,String(clinicId)]
     );
 
     return {
@@ -72,8 +81,11 @@ async function actualizarBloqueo(id, datos, clinicId, auditPersonId) {
     const { fechaInicio, fechaFin, motivo } = datos;
 
     await pool.query(
-        `CALL actualizarbloqueo($1, $2, $3, 1, $4, $5, $6)`,
-        [clinicId, auditPersonId, id, fechaInicio, fechaFin, motivo]
+        `
+        SELECT set_config('app.clinic_id', $7, true);
+        
+        CALL actualizarbloqueo($1, $2, $3, 1, $4, $5, $6)`,
+        [clinicId, auditPersonId, id, fechaInicio, fechaFin, motivo,String(clinicId)]
     );
 
     return await obtenerBloqueoPorId(id, clinicId, auditPersonId);
@@ -87,8 +99,11 @@ async function eliminarBloqueo(id, clinicId, auditPersonId) {
     }
 
     await pool.query(
-        `CALL actualizarbloqueo($1, $2, $3, 2, NULL, NULL, NULL)`,
-        [clinicId, auditPersonId, id]
+        `
+        SELECT set_config('app.clinic_id', $4, true);
+        
+        CALL actualizarbloqueo($1, $2, $3, 2, NULL, NULL, NULL)`,
+        [clinicId, auditPersonId, id, String(clinicId)]
     );
 
     return { id: Number(id), activo: false };
