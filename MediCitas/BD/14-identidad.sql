@@ -56,11 +56,3 @@ TO
 
 -- Impedir que usuarios no autorizados creen objetos en public
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
-
--- Ejecutar la función con los permisos de su propietario
-ALTER FUNCTION public.consultarprofesionales(INTEGER, INTEGER)
-SECURITY DEFINER;
-
--- Fijar la búsqueda de objetos SQL
-ALTER FUNCTION public.consultarprofesionales(INTEGER, INTEGER)
-SET search_path = pg_catalog, public, pg_temp;
