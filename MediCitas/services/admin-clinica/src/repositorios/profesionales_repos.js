@@ -3,10 +3,14 @@ const pool = require('../config/database');
 
 // Obtener profesionales de la clínica
 async function obtenerProfesionales(clinicId, auditPersonId) {
-    const query = `
+    const client = await pool.connect();
 
-        SELECT set_config('app.clinic_id', $3, true);
+    try {
+        await client.query('BEGIN');
 
+        await client.query( "select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
+
+        const resultado = await client.query( `
         SELECT
             cp.clinicprofessionalid AS id,
             cp.professionalid AS "profesionalId",
@@ -37,23 +41,33 @@ async function obtenerProfesionales(clinicId, auditPersonId) {
             cp.licenseid,
             cp.isactive
         ORDER BY cp.lastname, cp.name
-    `;
-
-    const resultado = await pool.query(query, [
+        `,[
         clinicId,
-        auditPersonId,
-        String(clinicId)
-    ]);
+        auditPersonId
+        ]);
 
-    return resultado.rows;
+        await client.query('COMMIT');
+
+        return resultado.rows;
+
+    }catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
 }
 
 // Obtener profesional por clinicprofessionalid
 async function obtenerProfesionalPorId(id, clinicId, auditPersonId) {
-    const query = `
+    const client = await pool.connect();
 
-        SELECT set_config('app.clinic_id', $4, true);
+    try {
+        await client.query('BEGIN');
 
+        await client.query( "select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
+
+        const resultado = await client.query(`
         SELECT
             cp.clinicprofessionalid AS id,
             cp.professionalid AS "profesionalId",
@@ -83,16 +97,22 @@ async function obtenerProfesionalPorId(id, clinicId, auditPersonId) {
             cp.lastname,
             cp.licenseid,
             cp.isactive
-    `;
-
-    const resultado = await pool.query(query, [
+        `,[
         clinicId,
         auditPersonId,
-        id,
-        String(clinicId)
-    ]);
+        id
+        ]);
 
-    return resultado.rows[0];
+        await client.query('COMMIT');
+
+        return resultado.rows[0];
+    
+    }catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
 }
 
 // Registrar profesional y asignar especialidades
@@ -103,12 +123,12 @@ async function registrarProfesional(datos, clinicId, auditPersonId) {
     try {
         await client.query('BEGIN');
 
+        await client.query( "select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
+
         await client.query(
             `
-            SELECT set_config('app.clinic_id', $5, true);
-            
             CALL crearprofesional($1, $2, $3, $4)`,
-            [clinicId, auditPersonId, usuarioId, licencia,String(clinicId)]
+            [clinicId, auditPersonId, usuarioId, licencia]
         );
 
         const resultado = await client.query(`
@@ -181,6 +201,7 @@ async function registrarProfesional(datos, clinicId, auditPersonId) {
         }
 
         await client.query('COMMIT');
+
         return consulta.rows[0];
 
     } catch (error) {
@@ -203,54 +224,85 @@ async function eliminarProfesional(id, clinicId, auditPersonId) {
         return null;
     }
 
-    await pool.query(
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        await client.query( "select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
+
+        await client.query(
         `
-        SELECT set_config('app.clinic_id', $6, true);
-        
         CALL actualizarprofesional($1, $2, $3, $4, $5)`,
         [
             clinicId,
             auditPersonId,
             actual.profesionalId,
             actual.licencia,
-            false,
-            String(clinicId)
+            false
         ]
-    );
+        );
 
-    return {
-        id: Number(id),
-        activo: false
-    };
+        await client.query('COMMIT');
+
+        return {
+            id: Number(id),
+            activo: false
+        };
+
+    }catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
 }
 
 // Asociar un servicio al profesional
 async function asociarServicio(id, servicioId, clinicId, auditPersonId) {
-    await pool.query(
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        await client.query( "select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
+
+        await client.query(
         `
-        SELECT set_config('app.clinic_id', $5, true);
-        
         CALL asignarservicioprofesional($1, $2, $3, $4)`,
         [
             clinicId,
             auditPersonId,
             id,
-            servicioId,
-            String(clinicId)
+            servicioId
         ]
-    );
+        );
 
-    return {
-        profesionalId: Number(id),
-        servicioId: Number(servicioId)
-    };
+        await client.query('COMMIT');
+
+        return {
+            profesionalId: Number(id),
+            servicioId: Number(servicioId)
+        };
+
+    }catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
 }
 
 // Consultar servicios habilitados
 async function obtenerServiciosProfesional(id, clinicId) {
-    const query = `
-        SELECT set_config('app.clinic_id', $3, true);
+    const client = await pool.connect();
 
+    try {
+        await client.query('BEGIN');
+
+        await client.query( "select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
+
+        const resultado = await client.query(`
         SELECT
             cps.clinicprofessionalserviceid AS id,
             cs.clinicserviceid AS "servicioId",
@@ -265,14 +317,22 @@ async function obtenerServiciosProfesional(id, clinicId) {
         JOIN specialties sp
             ON sp.specialtyid = s.specialtyid
         WHERE cps.clinicprofessionalid = $1
-          AND cs.clinicid = $2
-          AND cps.isactive = TRUE
-          AND cs.isactive = TRUE
+            AND cs.clinicid = $2
+            AND cps.isactive = TRUE
+            AND cs.isactive = TRUE
         ORDER BY s.name ASC
-    `;
+        `,[id, clinicId]);
 
-    const resultado = await pool.query(query, [id, clinicId,String(clinicId)]);
-    return resultado.rows;
+        await client.query('COMMIT');
+
+        return resultado.rows;
+
+    }catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
 }
 
 // Actualizar licencia y especialidades
@@ -280,12 +340,9 @@ async function actualizarProfesional(id, datos, clinicId, auditPersonId) {
     const client = await pool.connect();
 
     try {
-        await client.query(`
-            BEGIN;
+        await client.query('BEGIN');
 
-            SELECT set_config('app.clinic_id', $1, true);
-
-            `,[String(clinicId)]);
+        await client.query( "select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
 
         const previo = await client.query(`
             SELECT
@@ -294,7 +351,7 @@ async function actualizarProfesional(id, datos, clinicId, auditPersonId) {
                 licenseid AS licencia
             FROM consultarprofesionales($1, $2)
             WHERE clinicprofessionalid = $3
-              AND isactive = TRUE
+            AND isactive = TRUE
         `, [clinicId, auditPersonId, id]);
 
         if (previo.rows.length === 0) {
@@ -349,6 +406,7 @@ async function actualizarProfesional(id, datos, clinicId, auditPersonId) {
         `, [clinicId, auditPersonId, id]);
 
         await client.query('COMMIT');
+
         return resultado.rows[0];
 
     } catch (error) {

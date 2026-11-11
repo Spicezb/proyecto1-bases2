@@ -29,20 +29,20 @@ async function consultarLogs(clinicId, auditPersonId, filtros = {}) {
             personaId || null,
             pacienteId || null,
             fechaInicio || null,
-            fechaFin || null,
-            String(clinicId)
+            fechaFin || null
         ]);
 
         await client.query('COMMIT');
 
-    return resultado.rows;
+        return resultado.rows;
 
-} catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-} finally {
-    client.release();
-}}
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+}
 
 module.exports = {
     consultarLogs

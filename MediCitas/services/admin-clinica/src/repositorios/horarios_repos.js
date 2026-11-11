@@ -2,10 +2,14 @@ const pool = require('../config/database');
 
 // Consultar los horarios semanales (opcionalmente filtrados por profesional)
 async function obtenerHorarios(clinicId, auditPersonId, profesionalId = null) {
-    const query = `
+    const client = await pool.connect();
 
-        SELECT set_config('app.clinic_id', $4, true);
+    try {
+        await client.query('BEGIN');
 
+        await client.query( "select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
+
+        const resultado = await client.query( `
         SELECT DISTINCT
             professionalscheduleid AS id,
             clinicprofessionalid AS "profesionalId",
@@ -16,24 +20,34 @@ async function obtenerHorarios(clinicId, auditPersonId, profesionalId = null) {
         FROM consultarhorarios($1, $2, $3)
         WHERE professionalscheduleid IS NOT NULL
         ORDER BY "profesionalId", dia, "horaInicio"
-    `;
-
-    const resultado = await pool.query(query, [
+        `,[
         clinicId,
         auditPersonId,
-        profesionalId || null,
-        String(clinicId)
-    ]);
+        profesionalId || null
+        ]);
 
-    return resultado.rows;
+        await client.query('COMMIT');
+
+        return resultado.rows;
+
+    }catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
 }
 
 // Consultar un horario específico por su ID
 async function obtenerHorarioPorId(id, clinicId, auditPersonId) {
-    const query = `
+    const client = await pool.connect();
 
-        SELECT set_config('app.clinic_id', $4, true);
+    try {
+        await client.query('BEGIN');
 
+        await client.query( "select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
+
+        const resultado = await client.query(`
         SELECT DISTINCT
             professionalscheduleid AS id,
             clinicprofessionalid AS "profesionalId",
@@ -43,21 +57,32 @@ async function obtenerHorarioPorId(id, clinicId, auditPersonId) {
             scheduleactive AS activo
         FROM consultarhorarios($1, $2, NULL)
         WHERE professionalscheduleid = $3
-    `;
+        `,[clinicId, auditPersonId, id]);
 
-    const resultado = await pool.query(query, [clinicId, auditPersonId, id,String(clinicId)]);
+        await client.query('COMMIT');
 
-    return resultado.rows[0];
+        return resultado.rows[0];
+
+    }catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
 }
 
 // Registrar un nuevo horario semanal para un profesional
 async function crearHorario(datos, clinicId, auditPersonId) {
     const { profesionalId, dia, horaInicio, horaFin } = datos;
+    const client = await pool.connect();
 
-    await pool.query(
+    try {
+        await client.query('BEGIN');
+
+        await client.query( "select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
+
+        await client.query(
         `
-        SELECT set_config('app.clinic_id', $7, true);
-        
         CALL crearhorario($1, $2, $3, $4, $5, $6)`,
         [
             clinicId,
@@ -65,27 +90,39 @@ async function crearHorario(datos, clinicId, auditPersonId) {
             profesionalId,
             dia,
             horaInicio,
-            horaFin,
-            String(clinicId)
+            horaFin
         ]
-    );
+        );
 
-    return {
+        await client.query('COMMIT');
+
+        return {
         profesionalId,
         dia,
         horaInicio,
         horaFin
-    };
+        };
+
+    }catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
 }
 
 // Actualizar un horario semanal existente
 async function actualizarHorario(id, datos, clinicId, auditPersonId) {
     const { dia, horaInicio, horaFin, activo } = datos;
+    const client = await pool.connect();
 
-    await pool.query(
+    try {
+        await client.query('BEGIN');
+
+        await client.query( "select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
+
+        await client.query(
         `
-        SELECT set_config('app.clinic_id', $8, true);
-        
         CALL actualizarhorario($1, $2, $3, $4, $5, $6, $7)`,
         [
             clinicId,
@@ -94,26 +131,38 @@ async function actualizarHorario(id, datos, clinicId, auditPersonId) {
             dia,
             horaInicio,
             horaFin,
-            activo,
-            String(clinicId)
+            activo
         ]
-    );
+        );
 
-    return await obtenerHorarioPorId(id, clinicId, auditPersonId);
+        await client.query('COMMIT');
+
+        return await obtenerHorarioPorId(id, clinicId, auditPersonId);
+
+    }catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
 }
 
 // Dar de baja lógica un horario semanal (isactive = false)
 async function eliminarHorario(id, clinicId, auditPersonId) {
     const horarioActual = await obtenerHorarioPorId(id, clinicId, auditPersonId);
-
     if (!horarioActual) {
         return null;
     }
+    
+    const client = await pool.connect();
 
-    await pool.query(
-        `
-        SELECT set_config('app.clinic_id', $8, true);
-        
+    try {
+        await client.query('BEGIN');
+
+        await client.query( "select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
+
+        await client.query(
+        `        
         CALL actualizarhorario($1, $2, $3, $4, $5, $6, $7)`,
         [
             clinicId,
@@ -122,12 +171,20 @@ async function eliminarHorario(id, clinicId, auditPersonId) {
             horarioActual.dia,
             horarioActual.horaInicio,
             horarioActual.horaFin,
-            false,
-            String(clinicId)
+            false
         ]
-    );
+        );
 
-    return { id: Number(id), activo: false };
+        await client.query('COMMIT');
+
+        return { id: Number(id), activo: false };
+
+    }catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
 }
 
 module.exports = {
