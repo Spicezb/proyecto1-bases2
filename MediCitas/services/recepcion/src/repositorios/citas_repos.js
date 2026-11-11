@@ -3,13 +3,16 @@ const pool = require('../config/database');
 // Helper para obtener profesional y fecha de una cita para invalidación de caché
 async function obtenerDetalleCita(id, clinicId) {
     const res = await pool.query(
-        `SELECT
+        `
+        SELECT set_config('app.clinic_id', $3, true);
+        
+        SELECT
             a.clinicprofessionalid AS "profesionalId",
             (a.date AT TIME ZONE c.clinictimezone)::date::text AS "fecha"
          FROM appointments a
          JOIN clinics c ON c.clinicid = a.clinicid
          WHERE a.appointmentid = $1 AND a.clinicid = $2`,
-        [id, clinicId]
+        [id, clinicId,String(clinicId)]
     );
     return res.rows[0] || null;
 }
@@ -19,14 +22,18 @@ async function reservarCita(datos, clinicId, auditPersonId) {
     const { pacienteId, profesionalId, servicioId, fechaHora } = datos;
 
     await pool.query(
-        `CALL reservarcita($1, $2, $3, $4, $5, $6)`,
+        `
+        SELECT set_config('app.clinic_id', $7, true);
+        
+        CALL reservarcita($1, $2, $3, $4, $5, $6)`,
         [
             clinicId,
             auditPersonId,
             pacienteId,
             profesionalId,
             servicioId,
-            fechaHora
+            fechaHora,
+            String(clinicId)
         ]
     );
 
@@ -46,14 +53,18 @@ async function reprogramarCita(id, datos, clinicId, auditPersonId) {
     const detalleOriginal = await obtenerDetalleCita(id, clinicId);
 
     await pool.query(
-        `CALL reprogramarcita($1, $2, $3, $4, $5, $6)`,
+        `
+        SELECT set_config('app.clinic_id', $7, true);
+        
+        CALL reprogramarcita($1, $2, $3, $4, $5, $6)`,
         [
             clinicId,
             auditPersonId,
             id,
             nuevoProfesionalId,
             nuevoServicioId,
-            nuevaFechaHora
+            nuevaFechaHora,
+            String(clinicId)
         ]
     );
 
@@ -73,8 +84,11 @@ async function cancelarCita(id, motivo, clinicId, auditPersonId) {
     const detalleOriginal = await obtenerDetalleCita(id, clinicId);
 
     await pool.query(
-        `CALL cambiarestadocita($1, $2, $3, 4, $4)`,
-        [clinicId, auditPersonId, id, motivo]
+        `
+        SELECT set_config('app.clinic_id', $5, true);
+        
+        CALL cambiarestadocita($1, $2, $3, 4, $4)`,
+        [clinicId, auditPersonId, id, motivo,String(clinicId)]
     );
 
     return {
@@ -89,8 +103,11 @@ async function cancelarCita(id, motivo, clinicId, auditPersonId) {
 // RF12 & RF13: Registrar desenlace de cita (atendida = 2, ausente = 3)
 async function registrarDesenlace(id, nuevoEstadoId, clinicId, auditPersonId) {
     await pool.query(
-        `CALL cambiarestadocita($1, $2, $3, $4, NULL)`,
-        [clinicId, auditPersonId, id, nuevoEstadoId]
+        `
+        SELECT set_config('app.clinic_id', $5, true);
+        
+        CALL cambiarestadocita($1, $2, $3, $4, NULL)`,
+        [clinicId, auditPersonId, id, nuevoEstadoId,String(clinicId)]
     );
 
     return {
@@ -103,6 +120,8 @@ async function registrarDesenlace(id, nuevoEstadoId, clinicId, auditPersonId) {
 // RF20: Consultar la agenda del día (de un profesional o de toda la clínica)
 async function consultarAgenda(clinicId, auditPersonId, fecha, profesionalId = null) {
     const query = `
+        SELECT set_config('app.clinic_id', $5, true);
+
         SELECT
             appointmentid AS "citaId",
             appointmentdate AS "fechaHoraInicio",
@@ -120,7 +139,8 @@ async function consultarAgenda(clinicId, auditPersonId, fecha, profesionalId = n
         clinicId,
         auditPersonId,
         fecha,
-        profesionalId || null
+        profesionalId || null,
+        String(clinicId)
     ]);
 
     return resultado.rows;
@@ -129,6 +149,8 @@ async function consultarAgenda(clinicId, auditPersonId, fecha, profesionalId = n
 // RF16: Consultar el historial de citas de un paciente
 async function consultarCitasPaciente(clinicId, auditPersonId, pacienteId) {
     const query = `
+        SELECT set_config('app.clinic_id', $4, true);
+
         SELECT
             appointmentid AS "citaId",
             appointmentdate AS "fechaHoraInicio",
@@ -144,7 +166,8 @@ async function consultarCitasPaciente(clinicId, auditPersonId, pacienteId) {
     const resultado = await pool.query(query, [
         clinicId,
         auditPersonId,
-        pacienteId
+        pacienteId,
+        String(clinicId)
     ]);
 
     return resultado.rows;
@@ -153,6 +176,8 @@ async function consultarCitasPaciente(clinicId, auditPersonId, pacienteId) {
 // RF21: Contar citas por estado en un rango de fechas
 async function contarCitasPorEstado(clinicId, auditPersonId, fechaInicio, fechaFin) {
     const query = `
+        SELECT set_config('app.clinic_id', $5, true);
+
         SELECT
             appointmentstatusid AS "estadoId",
             total::int AS total
@@ -164,7 +189,8 @@ async function contarCitasPorEstado(clinicId, auditPersonId, fechaInicio, fechaF
         clinicId,
         auditPersonId,
         fechaInicio,
-        fechaFin
+        fechaFin,
+        String(clinicId)
     ]);
 
     return resultado.rows;

@@ -3,6 +3,8 @@ const pool = require('../config/database');
 // RF7: Consultar espacios disponibles de un profesional en una fecha
 async function consultarDisponibilidadProfesional(clinicId, auditPersonId, profesionalId, fecha) {
     const query = `
+        SELECT set_config('app.clinic_id', $5, true);
+
         SELECT
             slotstart AS "inicio",
             slotend AS "fin"
@@ -14,7 +16,8 @@ async function consultarDisponibilidadProfesional(clinicId, auditPersonId, profe
         clinicId,
         auditPersonId,
         profesionalId,
-        fecha
+        fecha,
+        String(clinicId)
     ]);
 
     return resultado.rows;
@@ -23,6 +26,8 @@ async function consultarDisponibilidadProfesional(clinicId, auditPersonId, profe
 // RF8: Consultar disponibilidad por servicio en un rango de fechas
 async function consultarDisponibilidadServicio(clinicId, auditPersonId, servicioId, fechaInicio, fechaFin) {
     const query = `
+        SELECT set_config('app.clinic_id', $6, true);
+
         SELECT
             clinicprofessionalid AS "profesionalId",
             professionalid AS "idProfesionalGlobal",
@@ -38,7 +43,8 @@ async function consultarDisponibilidadServicio(clinicId, auditPersonId, servicio
         auditPersonId,
         servicioId,
         fechaInicio,
-        fechaFin
+        fechaFin,
+        String(clinicId)
     ]);
 
     return resultado.rows;

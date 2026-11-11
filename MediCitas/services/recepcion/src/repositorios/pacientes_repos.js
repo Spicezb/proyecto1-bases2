@@ -4,10 +4,12 @@ const pool = require('../config/database');
 async function obtenerPacientes(clinicId,auditPersonId) {
 
     const query = `
+        SELECT set_config('app.clinic_id', $3, true);
+
         SELECT * FROM consultarpacientes($1,$2)
     `;
 
-    const resultado = await pool.query(query, [clinicId,auditPersonId]); 
+    const resultado = await pool.query(query, [clinicId,auditPersonId,String(clinicId)]); 
 
     return resultado.rows;
 }
@@ -16,10 +18,12 @@ async function obtenerPacientes(clinicId,auditPersonId) {
 async function obtenerPacientePorId(id, clinicId, auditPersonId) {
 
     const query = `
+        SELECT set_config('app.clinic_id', $4, true);
+
         SELECT * FROM consultarpacientes($1,$2,$3)
     `;
 
-    const resultado = await pool.query(query, [clinicId,auditPersonId,id]); 
+    const resultado = await pool.query(query, [clinicId,auditPersonId,id,String(clinicId)]); 
 
     return resultado.rows[0];
 }
@@ -36,7 +40,10 @@ async function registrarPaciente(datos, clinicId, auditPersonId) {
     } = datos;
 
     const resultado = await pool.query(
-        `CALL crearpaciente($1, $2, $3, $4, $5, $6, $7, $8, NULL)`,
+        `
+        SELECT set_config('app.clinic_id', $9, true);
+        
+        CALL crearpaciente($1, $2, $3, $4, $5, $6, $7, $8, NULL)`,
         [
             clinicId,
             auditPersonId,  
@@ -45,7 +52,8 @@ async function registrarPaciente(datos, clinicId, auditPersonId) {
             apellido,
             fechaNacimiento,
             correo || null,
-            telefono || null
+            telefono || null,
+            String(clinicId)
         ]
     );
 
@@ -72,7 +80,10 @@ async function actualizarPaciente(id, datos, clinicId, auditPersonId) {
     } = datos;
 
     await pool.query(
-        `CALL actualizarpaciente($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        `
+        SELECT set_config('app.clinic_id', $10, true);
+        
+        CALL actualizarpaciente($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
         [
             clinicId,
             auditPersonId,
@@ -82,7 +93,8 @@ async function actualizarPaciente(id, datos, clinicId, auditPersonId) {
             apellido,
             fechaNacimiento,
             correo || null,
-            telefono || null
+            telefono || null,
+            String(clinicId)
         ]
     );
 

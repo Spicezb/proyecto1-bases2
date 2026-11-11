@@ -8,7 +8,7 @@ Estudiantes:
 
 ## Contexto
 
-## Aplicación
+## Aplicaciones
 
 ## Base de datos
 
@@ -77,3 +77,30 @@ Se decidió manejar todos los procedimientos en la base de datos mediante stored
 #### Auditoría
 - registrarLog: Registrar internamente las operaciones de lectura y escritura que requieren auditoría.
 - consultarLogs: Consultar la bitácora con filtros por usuario, paciente y rango de fechas.
+
+## Modulo adicional - Row Level Security
+
+El módulo adicional escogido fue Row Level Security, este es implementado mediante el uso de una variable app.clinicid_id que ayuda a separar los registros por clínica, esta variable es local para cada transacción, por lo que después de finalizada una transacción, no condiciona el uso de las demás rutas para los demás usuarios.
+
+Para garantizar el funcionamiento del RLS, se creó un rol llamado rol_security dentro de la base de datos, al que se le dio el ownership de todos los procedimientos y funciones almacenadas, así, al utilizar security definer, los procedimientos y funciones se ejecutan bajo sus permisos. Lo anterior es importante porque si el ownership de las funciones lo tuviera el usuario creador de la base, entonces, al tener bypassrls, se salta las políticas de seguridad.
+
+Se aplico RLS sobre las siguientes tablas:
+
+- clinicpatients
+- clinicprofessionals
+- clinicservices
+- appointments
+- auditlogs
+- clinics
+- clinicprofessionalservices
+- professionalschedules
+- scheduleblocks
+- clinicalnotes
+
+La mayoría de estas tablas poseen la columna clinicid, y la política se les aplica directamente, en los casos que la tabla no tiene el clinicid, se hace por relación mediante el uso de funciones para simplificar las políticas.
+
+También existe una función que utilizan todas las políticas que se encarga de consultar la variable app.clinic_id para poder lograr la separación por clínica.
+
+Cada vez que se utiliza una ruta, en la consulta interna a la base, que por lo general es una llamada a los procedimientos almacenados, se setea la variable, por lo que el usuario que consulta solo tiene acceso a los registros pertenecientes a su clínica.
+
+## Pruebas

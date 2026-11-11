@@ -3,6 +3,8 @@ const pool = require('../config/database');
 // RF20: Consultar propia agenda del día
 async function consultarAgendaPropia(clinicId, auditPersonId, fecha) {
     const query = `
+        SELECT set_config('app.clinic_id', $4, true);
+
         SELECT
             appointmentid AS "citaId",
             appointmentdate AS "fechaHoraInicio",
@@ -15,13 +17,15 @@ async function consultarAgendaPropia(clinicId, auditPersonId, fecha) {
         ORDER BY appointmentdate ASC
     `;
 
-    const resultado = await pool.query(query, [clinicId, auditPersonId, fecha]);
+    const resultado = await pool.query(query, [clinicId, auditPersonId, fecha,String(clinicId)]);
     return resultado.rows;
 }
 
 // RF5: Consultar propios horarios semanales
 async function consultarHorariosPropios(clinicId, auditPersonId) {
     const query = `
+        SELECT set_config('app.clinic_id', $3, true);
+
         SELECT DISTINCT
             professionalscheduleid AS id,
             day AS dia,
@@ -33,15 +37,18 @@ async function consultarHorariosPropios(clinicId, auditPersonId) {
         ORDER BY dia, "horaInicio"
     `;
 
-    const resultado = await pool.query(query, [clinicId, auditPersonId]);
+    const resultado = await pool.query(query, [clinicId, auditPersonId,String(clinicId)]);
     return resultado.rows;
 }
 
 // RF12 & RF13: Registrar desenlace de cita (atendida = 2, ausente = 3)
 async function registrarDesenlace(appointmentId, nuevoEstadoId, clinicId, auditPersonId) {
     await pool.query(
-        `CALL cambiarestadocita($1, $2, $3, $4, NULL)`,
-        [clinicId, auditPersonId, appointmentId, nuevoEstadoId]
+        `
+        SELECT set_config('app.clinic_id', $5, true);
+
+        CALL cambiarestadocita($1, $2, $3, $4, NULL)`,
+        [clinicId, auditPersonId, appointmentId, nuevoEstadoId,String(clinicId)]
     );
 
     return {
@@ -54,6 +61,8 @@ async function registrarDesenlace(appointmentId, nuevoEstadoId, clinicId, auditP
 // RF16: Consultar historial de citas de un paciente atendido
 async function consultarHistorialPaciente(pacienteId, clinicId, auditPersonId) {
     const query = `
+        SELECT set_config('app.clinic_id', $4, true);
+
         SELECT
             appointmentid AS "citaId",
             appointmentdate AS "fechaHoraInicio",
@@ -66,7 +75,7 @@ async function consultarHistorialPaciente(pacienteId, clinicId, auditPersonId) {
         ORDER BY appointmentdate DESC
     `;
 
-    const resultado = await pool.query(query, [clinicId, auditPersonId, pacienteId]);
+    const resultado = await pool.query(query, [clinicId, auditPersonId, pacienteId, String(clinicId)]);
     return resultado.rows;
 }
 
