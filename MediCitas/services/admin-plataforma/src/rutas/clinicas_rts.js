@@ -6,8 +6,8 @@ const { autorizarRoles } = require('../middlewares/roles');
 // GET /api/clinicas - Listar clínicas (Solo Administrador de plataforma)
 router.get('/', autorizarRoles(['administrador de plataforma']), async (req, res) => {
     try {
-        const resultado = await clinicasService.obtenerClinicas();
-        res.status(200).json(resultado.clinicas);
+    const resultado = await clinicasService.obtenerClinicas(req.user.userId);        
+    res.status(200).json(resultado.clinicas);
     } catch (error) {
         console.error('Error al listar clínicas:', error);
         res.status(500).json({

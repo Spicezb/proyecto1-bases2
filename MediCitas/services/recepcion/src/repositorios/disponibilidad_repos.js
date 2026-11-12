@@ -1,53 +1,100 @@
 const pool = require('../config/database');
 
 // RF7: Consultar espacios disponibles de un profesional en una fecha
-async function consultarDisponibilidadProfesional(clinicId, auditPersonId, profesionalId, fecha) {
-    const query = `
-        SELECT set_config('app.clinic_id', $5, true);
+async function consultarDisponibilidadProfesional(
+    clinicId,
+    auditPersonId,
+    profesionalId,
+    fecha
+) {
+    const client = await pool.connect();
 
-        SELECT
-            slotstart AS "inicio",
-            slotend AS "fin"
-        FROM consultardisponibilidad($1, $2, $3, $4)
-        ORDER BY slotstart ASC
-    `;
+    try {
+        await client.query('BEGIN');
 
-    const resultado = await pool.query(query, [
-        clinicId,
-        auditPersonId,
-        profesionalId,
-        fecha,
-        String(clinicId)
-    ]);
+        // Establecer el contexto de la clínica para RLS
+        await client.query(
+            "SELECT set_config('app.clinic_id', $1, true)",
+            [String(clinicId)]
+        );
 
-    return resultado.rows;
+        const query = `
+            SELECT
+                slotstart AS "inicio",
+                slotend AS "fin"
+            FROM consultardisponibilidad($1, $2, $3, $4)
+            ORDER BY slotstart ASC
+        `;
+
+        const resultado = await client.query(query, [
+            clinicId,
+            auditPersonId,
+            profesionalId,
+            fecha
+        ]);
+
+        await client.query('COMMIT');
+
+        return resultado.rows;
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+
+    } finally {
+        client.release();
+    }
 }
 
 // RF8: Consultar disponibilidad por servicio en un rango de fechas
-async function consultarDisponibilidadServicio(clinicId, auditPersonId, servicioId, fechaInicio, fechaFin) {
-    const query = `
-        SELECT set_config('app.clinic_id', $6, true);
+async function consultarDisponibilidadServicio(
+    clinicId,
+    auditPersonId,
+    servicioId,
+    fechaInicio,
+    fechaFin
+) {
+    const client = await pool.connect();
 
-        SELECT
-            clinicprofessionalid AS "profesionalId",
-            professionalid AS "idProfesionalGlobal",
-            professionalname AS "nombreProfesional",
-            startdatetime AS "inicio",
-            enddatetime AS "fin"
-        FROM consultardisponibilidadservicio($1, $2, $3, $4, $5)
-        ORDER BY startdatetime ASC
-    `;
+    try {
+        await client.query('BEGIN');
 
-    const resultado = await pool.query(query, [
-        clinicId,
-        auditPersonId,
-        servicioId,
-        fechaInicio,
-        fechaFin,
-        String(clinicId)
-    ]);
+        // Establecer el contexto de la clínica para RLS
+        await client.query(
+            "SELECT set_config('app.clinic_id', $1, true)",
+            [String(clinicId)]
+        );
 
-    return resultado.rows;
+        const query = `
+            SELECT
+                clinicprofessionalid AS "profesionalId",
+                professionalid AS "idProfesionalGlobal",
+                professionalname AS "nombreProfesional",
+                startdatetime AS "inicio",
+                enddatetime AS "fin"
+            FROM consultardisponibilidadservicio($1, $2, $3, $4, $5)
+            ORDER BY startdatetime ASC
+        `;
+
+        const resultado = await client.query(query, [
+            clinicId,
+            auditPersonId,
+            servicioId,
+            fechaInicio,
+            fechaFin
+        ]);
+
+        await client.query('COMMIT');
+
+        return resultado.rows;
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+
+    } finally {
+        client.release();
+    }
 }
 
 module.exports = {

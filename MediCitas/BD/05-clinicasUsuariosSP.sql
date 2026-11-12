@@ -1,33 +1,48 @@
 -- CLÍNICAS Y USUARIOS -----------------------------------------------------------------------
+DROP PROCEDURE IF EXISTS public.crearclinica(
+    INT,
+    VARCHAR,
+    VARCHAR,
+    VARCHAR,
+    VARCHAR,
+    VARCHAR,
+    VARCHAR,
+    VARCHAR,
+    VARCHAR
+);
 
-CREATE OR REPLACE PROCEDURE crearclinica(
-    p_platformuserid INT,
-    p_name VARCHAR(100),
-    p_timezone VARCHAR(50),
-    p_adminproviderid VARCHAR(255),
-    p_adminidentification VARCHAR(12),
-    p_adminname VARCHAR(25),
-    p_adminlastname VARCHAR(25),
-    p_adminemail VARCHAR(100),
-    p_adminphone VARCHAR(20)
+CREATE PROCEDURE public.crearclinica(
+    IN p_platformuserid INT,
+    IN p_name VARCHAR(100),
+    IN p_timezone VARCHAR(50),
+    IN p_adminproviderid VARCHAR(255),
+    IN p_adminidentification VARCHAR(12),
+    IN p_adminname VARCHAR(25),
+    IN p_adminlastname VARCHAR(25),
+    IN p_adminemail VARCHAR(100),
+    IN p_adminphone VARCHAR(20),
+    OUT p_clinicid INT
 )
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
 AS $$
-DECLARE
-    v_clinicid INT;
 BEGIN
+    -- Validar al administrador de plataforma
     IF NOT EXISTS (
         SELECT 1
-        FROM users
+        FROM public.users
         WHERE userid = p_platformuserid
           AND roleid = 1
           AND clinicid IS NULL
           AND isactive = TRUE
     ) THEN
-        RAISE EXCEPTION 'Solo el administrador de plataforma puede crear clínicas.';
+        RAISE EXCEPTION
+            'Solo el administrador de plataforma puede crear clínicas.';
     END IF;
 
-    INSERT INTO clinics (
+    -- Crear clínica y obtener su ID
+    INSERT INTO public.clinics (
         name,
         clinictimezone,
         auditpersonid
@@ -37,9 +52,10 @@ BEGIN
         p_timezone,
         p_platformuserid
     )
-    RETURNING clinicid INTO v_clinicid;
+    RETURNING clinicid INTO p_clinicid;
 
-    INSERT INTO users (
+    -- Registrar administrador de la nueva clínica
+    INSERT INTO public.users (
         providerid,
         clinicid,
         roleid,
@@ -51,7 +67,7 @@ BEGIN
     )
     VALUES (
         p_adminproviderid,
-        v_clinicid,
+        p_clinicid,
         2,
         p_adminidentification,
         p_adminname,
@@ -184,7 +200,8 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION consultarusuarios(
+
+CREATE OR REPLACE FUNCTION public.consultarusuarios(
     p_clinicid INT,
     p_auditpersonid INT
 )
@@ -200,15 +217,17 @@ RETURNS TABLE (
     isactive BOOLEAN
 )
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
 AS $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1
-        FROM users
-        WHERE userid = p_auditpersonid
-          AND clinicid = p_clinicid
-          AND roleid = 2
-          AND isactive = TRUE
+        FROM public.users u
+        WHERE u.userid = p_auditpersonid
+          AND u.clinicid = p_clinicid
+          AND u.roleid = 2
+          AND u.isactive = TRUE
     ) THEN
         RAISE EXCEPTION 'Acceso denegado.';
     END IF;
@@ -224,8 +243,93 @@ BEGIN
         u.email,
         u.phone,
         u.isactive
-    FROM users u
+    FROM public.users u
     WHERE u.clinicid = p_clinicid
     ORDER BY u.lastname, u.name;
+END;
+$$;
+
+-- Consultar clínicas de la plataforma
+CREATE OR REPLACE FUNCTION public.consultarclinicas(
+    p_platformuserid INT
+)
+RETURNS TABLE (
+    clinicid INT,
+    name VARCHAR,
+    clinictimezone VARCHAR,
+    isactive BOOLEAN,
+    createdat TIMESTAMP
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
+AS $$
+BEGIN
+    -- Verificar que sea administrador de plataforma
+    IF NOT EXISTS (
+        SELECT 1
+        FROM public.users u
+        WHERE u.userid = p_platformuserid
+          AND u.roleid = 1
+          AND u.clinicid IS NULL
+          AND u.isactive = TRUE
+    ) THEN
+        RAISE EXCEPTION
+            'Solo el administrador de plataforma puede consultar clínicas.';
+    END IF;
+
+    RETURN QUERY
+    SELECT
+        c.clinicid,
+        c.name::VARCHAR,
+        c.clinictimezone::VARCHAR,
+        c.isactive,
+        c.createdat::TIMESTAMP
+    FROM public.clinics c
+    ORDER BY c.clinicid;
+END;
+$$;
+
+
+-- Consultar los datos necesarios para invalidar Redis
+-- al reprogramar o cancelar una cita
+CREATE OR REPLACE FUNCTION public.obtenerdetallecita(
+    p_appointmentid INT,
+    p_clinicid INT,
+    p_auditpersonid INT
+)
+RETURNS TABLE (
+    profesionalid INT,
+    fecha TEXT
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
+AS $$
+BEGIN
+    -- Validar que el usuario sea recepcionista activo
+    -- y pertenezca a la clínica correspondiente.
+    IF NOT EXISTS (
+        SELECT 1
+        FROM public.users u
+        WHERE u.userid = p_auditpersonid
+          AND u.clinicid = p_clinicid
+          AND u.roleid = 3
+          AND u.isactive = TRUE
+    ) THEN
+        RAISE EXCEPTION 'Acceso denegado.';
+    END IF;
+
+    RETURN QUERY
+    SELECT
+        a.clinicprofessionalid,
+        (a.date AT TIME ZONE c.clinictimezone)::DATE::TEXT
+    FROM public.appointments a
+    JOIN public.clinics c
+        ON c.clinicid = a.clinicid
+    WHERE a.appointmentid = p_appointmentid
+      AND a.clinicid = p_clinicid;
 END;
 $$;

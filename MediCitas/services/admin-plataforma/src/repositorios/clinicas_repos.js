@@ -13,47 +13,77 @@ async function crearClinica(datos, platformUserId) {
         adminTelefono
     } = datos;
 
-    await pool.query(
-        `CALL crearclinica($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-        [
-            platformUserId,
-            nombre,
-            zonaHoraria || 'America/Costa_Rica',
-            adminProviderId,
-            adminIdentificacion,
-            adminNombre,
-            adminApellido,
-            adminEmail,
-            adminTelefono || null
-        ]
-    );
+    const client = await pool.connect();
 
-    const query = `
-        SELECT clinicid, name, clinictimezone, isactive, createdat
-        FROM clinics
-        WHERE name = $1
-        ORDER BY clinicid DESC
-        LIMIT 1
-    `;
-    const resultado = await pool.query(query, [nombre]);
-    return resultado.rows[0];
+    try {
+        await client.query('BEGIN');
+
+        // Crear la clínica y su administrador mediante el SP.
+        // El parámetro OUT devuelve el clinicid generado.
+        const resultado = await client.query(
+            `CALL public.crearclinica(
+                $1, $2, $3, $4, $5,
+                $6, $7, $8, $9, NULL
+            )`,
+            [
+                platformUserId,
+                nombre,
+                zonaHoraria || 'America/Costa_Rica',
+                adminProviderId,
+                adminIdentificacion,
+                adminNombre,
+                adminApellido,
+                adminEmail,
+                adminTelefono || null
+            ]
+        );
+
+        const clinicId = resultado.rows[0]?.p_clinicid;
+
+        if (clinicId == null) {
+            throw new Error(
+                'El procedimiento no devolvió el ID de la clínica creada.'
+            );
+        }
+
+        await client.query('COMMIT');
+
+        return {
+            id: clinicId,
+            nombre,
+            zonaHoraria: zonaHoraria || 'America/Costa_Rica',
+            activo: true
+        };
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+
+    } finally {
+        client.release();
+    }
 }
 
 // Consultar clínicas de la plataforma
-async function obtenerClinicas() {
-    const query = `
-        SELECT
-            c.clinicid AS id,
-            c.name AS nombre,
-            c.clinictimezone AS "zonaHoraria",
-            c.isactive AS activo,
-            c.createdat AS "fechaCreacion"
-        FROM clinics c
-        ORDER BY c.clinicid ASC
-    `;
+async function obtenerClinicas(platformUserId) {
+    const client = await pool.connect();
 
-    const resultado = await pool.query(query);
-    return resultado.rows;
+    try {
+        const resultado = await client.query(`
+            SELECT
+                clinicid AS id,
+                name AS nombre,
+                clinictimezone AS "zonaHoraria",
+                isactive AS activo,
+                createdat AS "fechaCreacion"
+            FROM public.consultarclinicas($1)
+        `, [platformUserId]);
+
+        return resultado.rows;
+
+    } finally {
+        client.release();
+    }
 }
 
 module.exports = {

@@ -78,8 +78,8 @@ async function crearClinica(datos, platformUserId) {
     return { clinica };
 }
 
-async function obtenerClinicas() {
-    const clinicas = await clinicasRepositorio.obtenerClinicas();
+async function obtenerClinicas(platformUserId) {
+    const clinicas = await clinicasRepositorio.obtenerClinicas(platformUserId);
     return { clinicas };
 }
 

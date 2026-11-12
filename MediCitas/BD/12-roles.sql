@@ -52,6 +52,9 @@ BEGIN
 
                 -- admin general
                 ('crearclinica', 'rol_admin_general'),
+                ('consultarclinicas', 'rol_admin_general'),
+                ('contarcitasporestado', 'rol_recepcion'),
+                ('obtenerdetallecita', 'rol_recepcion'),
 
                 -- admin de la clínica
                 ('crearusuario', 'rol_admin_clinica'),
