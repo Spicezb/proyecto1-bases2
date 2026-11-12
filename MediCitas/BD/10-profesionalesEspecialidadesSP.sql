@@ -134,6 +134,8 @@ BEGIN
 END;
 $$;
 
+DROP FUNCTION IF EXISTS consultarprofesionales(INT, INT);
+
 CREATE OR REPLACE FUNCTION consultarprofesionales(
     p_clinicid INT,
     p_auditpersonid INT
@@ -145,7 +147,8 @@ RETURNS TABLE (
     name VARCHAR,
     lastname VARCHAR,
     licenseid VARCHAR,
-    isactive BOOLEAN
+    isactive BOOLEAN,
+    especialidades VARCHAR[]
 )
 LANGUAGE plpgsql
 AS $$
@@ -154,9 +157,9 @@ BEGIN
         SELECT 1
         FROM users u
         WHERE u.userid = p_auditpersonid
-        AND u.clinicid = p_clinicid
-        AND u.roleid IN (2, 3, 4)
-        AND u.isactive = TRUE
+          AND u.clinicid = p_clinicid
+          AND u.roleid IN (2, 3, 4)
+          AND u.isactive = TRUE
     ) THEN
         RAISE EXCEPTION 'Acceso denegado.';
     END IF;
@@ -169,13 +172,32 @@ BEGIN
         u.name,
         u.lastname,
         p.licenseid,
-        cp.isactive
+        cp.isactive,
+        COALESCE(
+            ARRAY_AGG(DISTINCT s.name)
+                FILTER (WHERE s.specialtyid IS NOT NULL),
+            ARRAY[]::varchar[]
+        )::VARCHAR[]
     FROM clinicprofessionals cp
     INNER JOIN professionals p
         ON p.professionalid = cp.professionalid
     INNER JOIN users u
         ON u.userid = cp.userid
+    LEFT JOIN professionalspecialties ps
+        ON p.professionalid = ps.professionalid
+        AND ps.isactive = TRUE
+    LEFT JOIN specialties s
+        ON ps.specialtyid = s.specialtyid
+        AND s.isactive = TRUE
     WHERE cp.clinicid = p_clinicid
+    GROUP BY
+        cp.clinicprofessionalid,
+        p.professionalid,
+        u.userid,
+        u.name,
+        u.lastname,
+        p.licenseid,
+        cp.isactive
     ORDER BY u.lastname, u.name;
 END;
 $$;

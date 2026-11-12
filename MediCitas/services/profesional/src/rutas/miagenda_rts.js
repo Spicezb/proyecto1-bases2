@@ -18,6 +18,9 @@ router.get('/', autorizarRoles(['profesional de salud']), async (req, res) => {
         res.status(200).json(resultado.agenda);
     } catch (error) {
         console.error('Error al consultar agenda:', error);
+        if (error.message && error.message.includes('Acceso denegado')) {
+            return res.status(403).json({ status: 'error', message: error.message });
+        }
         res.status(500).json({ status: 'error', message: 'Error interno del servidor.' });
     }
 });
@@ -29,6 +32,9 @@ router.get('/horarios', autorizarRoles(['profesional de salud']), async (req, re
         res.status(200).json(resultado.horarios);
     } catch (error) {
         console.error('Error al consultar horarios:', error);
+        if (error.message && error.message.includes('Acceso denegado')) {
+            return res.status(403).json({ status: 'error', message: error.message });
+        }
         res.status(500).json({ status: 'error', message: 'Error interno del servidor.' });
     }
 });
@@ -46,8 +52,15 @@ router.put('/citas/:id/desenlace', autorizarRoles(['profesional de salud']), asy
         res.status(200).json(resultado.cita);
     } catch (error) {
         console.error('Error al registrar desenlace:', error);
-        if (error.message && error.message.includes('Solo el profesional asignado')) {
+        if (
+            error.message &&
+            (error.message.includes('Solo el profesional asignado') ||
+             error.message.includes('Acceso denegado'))
+        ) {
             return res.status(403).json({ status: 'error', message: error.message });
+        }
+        if (error.message && error.message.includes('Cita no encontrada')) {
+            return res.status(404).json({ status: 'error', message: error.message });
         }
         if (error.message && (error.message.includes('solo se registra después') || error.message.includes('Transición de estado'))) {
             return res.status(400).json({ status: 'error', message: error.message });
@@ -67,8 +80,15 @@ router.get('/pacientes/:id/historial', autorizarRoles(['profesional de salud']),
         res.status(200).json(resultado.historial);
     } catch (error) {
         console.error('Error al consultar historial del paciente:', error);
-        if (error.message && error.message.includes('No tiene permiso')) {
+        if (
+            error.message &&
+            (error.message.includes('No tiene permiso') ||
+             error.message.includes('Acceso denegado'))
+        ) {
             return res.status(403).json({ status: 'error', message: error.message });
+        }
+        if (error.message && error.message.includes('Paciente no pertenece a la clínica')) {
+            return res.status(404).json({ status: 'error', message: error.message });
         }
         res.status(500).json({ status: 'error', message: 'Error interno del servidor.' });
     }

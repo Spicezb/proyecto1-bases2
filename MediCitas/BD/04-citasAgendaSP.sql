@@ -16,16 +16,16 @@ DECLARE
     v_appointmentid INT;
     v_localdate DATE;
 BEGIN
-    -- Validar que el usuario sea de recepción
+    -- Validar que el usuario sea recepción o administrador de clínica
     IF NOT EXISTS (
         SELECT 1
         FROM users
         WHERE userid = p_auditpersonid
           AND clinicid = p_clinicid
-          AND roleid = 3
+          AND roleid IN (2, 3)
           AND isactive
     ) THEN
-        RAISE EXCEPTION 'Solo recepción puede reservar citas.';
+        RAISE EXCEPTION 'Solo recepción o el administrador de clínica puede reservar citas.';
     END IF;
 
     -- Validar que el paciente pertenezca a la clínica
@@ -143,16 +143,16 @@ DECLARE
     v_newappointmentid INT;
     v_localdate DATE;
 BEGIN
-    -- Validar que el usuario sea de recepción
+    -- Validar que el usuario sea recepción o administrador de clínica
     IF NOT EXISTS (
         SELECT 1
         FROM users
         WHERE userid = p_auditpersonid
           AND clinicid = p_clinicid
-          AND roleid = 3
+          AND roleid IN (2, 3)
           AND isactive
     ) THEN
-        RAISE EXCEPTION 'Solo recepción puede reprogramar citas.';
+        RAISE EXCEPTION 'Solo recepción o el administrador de clínica puede reprogramar citas.';
     END IF;
 
     -- Obtener el paciente de la cita original
@@ -304,26 +304,31 @@ BEGIN
         FROM users
         WHERE userid = p_auditpersonid
           AND clinicid = p_clinicid
-          AND roleid = 3
+          AND roleid IN (2, 3)
           AND isactive
     ) THEN
-        RAISE EXCEPTION 'Solo recepción puede cancelar citas.';
+        RAISE EXCEPTION 'Solo recepción o el administrador de clínica puede cancelar citas.';
     END IF;
 
-    -- Validar que el profesional asignado registre el desenlace
+    -- Validar que el profesional asignado, recepción o administrador de clínica registre el desenlace
     IF p_newstatusid IN (2, 3) AND NOT EXISTS (
         SELECT 1
-        FROM clinicprofessionals cp
-        JOIN users u ON u.userid = cp.userid
-        JOIN appointments a
-            ON a.clinicprofessionalid = cp.clinicprofessionalid
+        FROM users u
+        JOIN appointments a ON a.appointmentid = p_appointmentid
+        LEFT JOIN clinicprofessionals cp
+          ON cp.clinicprofessionalid = a.clinicprofessionalid
+         AND cp.clinicid = p_clinicid
+         AND cp.userid = u.userid
         WHERE u.userid = p_auditpersonid
-          AND cp.clinicid = p_clinicid
-          AND a.appointmentid = p_appointmentid
-          AND u.roleid = 4
+          AND u.clinicid = p_clinicid
           AND u.isactive
+          AND a.clinicid = p_clinicid
+          AND (
+              u.roleid IN (2, 3)
+              OR (u.roleid = 4 AND cp.clinicprofessionalid IS NOT NULL)
+          )
     ) THEN
-        RAISE EXCEPTION 'Solo el profesional asignado puede registrar el desenlace.';
+        RAISE EXCEPTION 'Solo el profesional asignado, recepción o el administrador de clínica puede registrar el desenlace.';
     END IF;
 
     UPDATE appointments

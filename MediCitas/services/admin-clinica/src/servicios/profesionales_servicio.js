@@ -1,4 +1,5 @@
 const profesionalesRepositorio = require('../repositorios/profesionales_repos');
+const redis = require('../config/redis');
 
 // Validar datos para crear un profesional
 function validarDatosCreacion(datos) {
@@ -160,6 +161,9 @@ async function actualizarProfesional(id, datos, clinicId, auditPersonId) {
         };
     }
 
+    // Invariante I8: Invalidar caché de disponibilidad si cambia estado o datos del profesional
+    await redis.deleteKeysByPattern(`medicitas:disp:${clinicId}:prof:${Number(id)}:*`);
+
     return { profesional };
 }
 
@@ -185,6 +189,9 @@ async function eliminarProfesional(id, clinicId, auditPersonId) {
         };
     }
 
+    // Invariante I8: Invalidar caché de disponibilidad al dar de baja al profesional
+    await redis.deleteKeysByPattern(`medicitas:disp:${clinicId}:prof:${Number(id)}:*`);
+
     return { resultado };
 }
 
@@ -208,7 +215,7 @@ async function asociarServicio(id, servicioId, clinicId, auditPersonId) {
 }
 
 // Obtener servicios de un profesional
-async function obtenerServiciosProfesional(id, clinicId) {
+async function obtenerServiciosProfesional(id, clinicId, auditPersonId) {
     if (!/^[1-9]\d*$/.test(String(id))) {
         return {
             error: 'El ID del profesional debe ser un entero positivo.',
@@ -218,7 +225,8 @@ async function obtenerServiciosProfesional(id, clinicId) {
 
     const servicios = await profesionalesRepositorio.obtenerServiciosProfesional(
         Number(id),
-        clinicId
+        clinicId,
+        auditPersonId
     );
 
     return { servicios };

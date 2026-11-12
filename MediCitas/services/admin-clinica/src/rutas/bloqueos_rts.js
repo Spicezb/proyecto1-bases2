@@ -27,9 +27,16 @@ router.get('/', autorizarRoles(['administrador de clínica', 'recepción', 'prof
     } catch (error) {
         console.error('Error al consultar bloqueos:', error);
 
+        if (error.message && error.message.includes('Acceso denegado')) {
+            return res.status(403).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+
         res.status(500).json({
             status: 'error',
-            message: 'Error interno del servidor al consultar bloqueos.'
+            message: 'Error interno del servidor.'
         });
     }
 });
@@ -65,6 +72,13 @@ router.get('/:id', autorizarRoles(['administrador de clínica', 'recepción', 'p
     } catch (error) {
         console.error('Error al consultar bloqueo:', error);
 
+        if (error.message && error.message.includes('Acceso denegado')) {
+            return res.status(403).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+
         res.status(500).json({
             status: 'error',
             message: 'Error interno del servidor.'
@@ -72,8 +86,8 @@ router.get('/:id', autorizarRoles(['administrador de clínica', 'recepción', 'p
     }
 });
 
-// POST /api/bloqueos - Registrar un bloqueo de agenda (Solo Administrador de clínica)
-router.post('/', autorizarRoles(['administrador de clínica']), async (req, res) => {
+// POST /api/bloqueos - Registrar un bloqueo de agenda (Administrador de clínica o propio Profesional)
+router.post('/', autorizarRoles(['administrador de clínica', 'profesional de salud']), async (req, res) => {
     try {
         const clinicId = req.user.clinicId;
         const auditPersonId = req.user.userId;
@@ -105,7 +119,11 @@ router.post('/', autorizarRoles(['administrador de clínica']), async (req, res)
             });
         }
 
-        if (error.message && error.message.includes('Solo el administrador')) {
+        if (
+            error.message &&
+            (error.message.includes('Solo el administrador') ||
+             error.message.includes('Solo puede gestionar sus propios'))
+        ) {
             return res.status(403).json({
                 status: 'error',
                 message: error.message
@@ -133,8 +151,8 @@ router.post('/', autorizarRoles(['administrador de clínica']), async (req, res)
     }
 });
 
-// PUT /api/bloqueos/:id - Modificar un bloqueo existente (Solo Administrador de clínica)
-router.put('/:id', autorizarRoles(['administrador de clínica']), async (req, res) => {
+// PUT /api/bloqueos/:id - Modificar un bloqueo existente (Administrador de clínica o propio Profesional)
+router.put('/:id', autorizarRoles(['administrador de clínica', 'profesional de salud']), async (req, res) => {
     try {
         const { id } = req.params;
         const clinicId = req.user.clinicId;
@@ -168,7 +186,11 @@ router.put('/:id', autorizarRoles(['administrador de clínica']), async (req, re
             });
         }
 
-        if (error.message && error.message.includes('Solo el administrador')) {
+        if (
+            error.message &&
+            (error.message.includes('Solo el administrador') ||
+             error.message.includes('Solo puede gestionar sus propios'))
+        ) {
             return res.status(403).json({
                 status: 'error',
                 message: error.message
@@ -196,8 +218,8 @@ router.put('/:id', autorizarRoles(['administrador de clínica']), async (req, re
     }
 });
 
-// DELETE /api/bloqueos/:id - Desactivar un bloqueo (Solo Administrador de clínica)
-router.delete('/:id', autorizarRoles(['administrador de clínica']), async (req, res) => {
+// DELETE /api/bloqueos/:id - Desactivar un bloqueo (Administrador de clínica o propio Profesional)
+router.delete('/:id', autorizarRoles(['administrador de clínica', 'profesional de salud']), async (req, res) => {
     try {
         const { id } = req.params;
         const clinicId = req.user.clinicId;
@@ -224,7 +246,11 @@ router.delete('/:id', autorizarRoles(['administrador de clínica']), async (req,
     } catch (error) {
         console.error('Error al desactivar bloqueo:', error);
 
-        if (error.message && error.message.includes('Solo el administrador')) {
+        if (
+            error.message &&
+            (error.message.includes('Solo el administrador') ||
+             error.message.includes('Solo puede gestionar sus propios'))
+        ) {
             return res.status(403).json({
                 status: 'error',
                 message: error.message

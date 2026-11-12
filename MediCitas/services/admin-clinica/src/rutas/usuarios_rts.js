@@ -13,6 +13,9 @@ router.get('/', autorizarRoles(['administrador de clínica']), async (req, res) 
         res.status(200).json(resultado.usuarios);
     } catch (error) {
         console.error('Error al consultar usuarios:', error);
+        if (error.message && error.message.includes('Acceso denegado')) {
+            return res.status(403).json({ status: 'error', message: error.message });
+        }
         res.status(500).json({ status: 'error', message: 'Error interno del servidor.' });
     }
 });
@@ -30,6 +33,12 @@ router.post('/', autorizarRoles(['administrador de clínica']), async (req, res)
         res.status(201).json(resultado.usuario);
     } catch (error) {
         console.error('Error al crear usuario:', error);
+        if (error.message && error.message.includes('Solo el administrador')) {
+            return res.status(403).json({ status: 'error', message: error.message });
+        }
+        if (error.message && error.message.includes('Rol no válido')) {
+            return res.status(400).json({ status: 'error', message: error.message });
+        }
         if (error.code === '23505') {
             return res.status(409).json({ status: 'error', message: 'El usuario ya existe con ese identificador o cédula.' });
         }
@@ -52,6 +61,15 @@ router.put('/:id/rol', autorizarRoles(['administrador de clínica']), async (req
         res.status(200).json(resultado.usuario);
     } catch (error) {
         console.error('Error al cambiar rol:', error);
+        if (error.message && error.message.includes('Solo el administrador')) {
+            return res.status(403).json({ status: 'error', message: error.message });
+        }
+        if (error.message && error.message.includes('Rol no válido')) {
+            return res.status(400).json({ status: 'error', message: error.message });
+        }
+        if (error.message && error.message.includes('Usuario inexistente')) {
+            return res.status(404).json({ status: 'error', message: error.message });
+        }
         res.status(500).json({ status: 'error', message: 'Error interno del servidor.' });
     }
 });
@@ -70,6 +88,12 @@ router.delete('/:id', autorizarRoles(['administrador de clínica']), async (req,
         res.status(200).json({ status: 'ok', message: 'Usuario desactivado correctamente.', data: resultado.resultado });
     } catch (error) {
         console.error('Error al desactivar usuario:', error);
+        if (error.message && error.message.includes('Solo el administrador')) {
+            return res.status(403).json({ status: 'error', message: error.message });
+        }
+        if (error.message && error.message.includes('Usuario inexistente')) {
+            return res.status(404).json({ status: 'error', message: error.message });
+        }
         res.status(500).json({ status: 'error', message: 'Error interno del servidor.' });
     }
 });

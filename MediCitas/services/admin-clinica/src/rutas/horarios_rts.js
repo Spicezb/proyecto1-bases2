@@ -86,8 +86,8 @@ router.get('/:id', autorizarRoles(['administrador de clínica', 'recepción', 'p
     }
 });
 
-// POST /api/horarios - Registrar un nuevo horario semanal (Solo Administrador de clínica)
-router.post('/', autorizarRoles(['administrador de clínica']), async (req, res) => {
+// POST /api/horarios - Registrar un nuevo horario semanal (Administrador de clínica o propio Profesional)
+router.post('/', autorizarRoles(['administrador de clínica', 'profesional de salud']), async (req, res) => {
     try {
         const clinicId = req.user.clinicId;
         const auditPersonId = req.user.userId;
@@ -119,7 +119,11 @@ router.post('/', autorizarRoles(['administrador de clínica']), async (req, res)
             });
         }
 
-        if (error.message && error.message.includes('Solo el administrador')) {
+        if (
+            error.message &&
+            (error.message.includes('Solo el administrador') ||
+             error.message.includes('Solo puede gestionar sus propios'))
+        ) {
             return res.status(403).json({
                 status: 'error',
                 message: error.message
@@ -151,8 +155,8 @@ router.post('/', autorizarRoles(['administrador de clínica']), async (req, res)
     }
 });
 
-// PUT /api/horarios/:id - Actualizar un horario semanal existente (Solo Administrador de clínica)
-router.put('/:id', autorizarRoles(['administrador de clínica']), async (req, res) => {
+// PUT /api/horarios/:id - Actualizar un horario semanal existente (Administrador de clínica o propio Profesional)
+router.put('/:id', autorizarRoles(['administrador de clínica', 'profesional de salud']), async (req, res) => {
     try {
         const { id } = req.params;
         const clinicId = req.user.clinicId;
@@ -186,7 +190,11 @@ router.put('/:id', autorizarRoles(['administrador de clínica']), async (req, re
             });
         }
 
-        if (error.message && error.message.includes('Solo el administrador')) {
+        if (
+            error.message &&
+            (error.message.includes('Solo el administrador') ||
+             error.message.includes('Solo puede gestionar sus propios'))
+        ) {
             return res.status(403).json({
                 status: 'error',
                 message: error.message
@@ -218,8 +226,8 @@ router.put('/:id', autorizarRoles(['administrador de clínica']), async (req, re
     }
 });
 
-// DELETE /api/horarios/:id - Desactivar un horario semanal (Solo Administrador de clínica)
-router.delete('/:id', autorizarRoles(['administrador de clínica']), async (req, res) => {
+// DELETE /api/horarios/:id - Desactivar un horario semanal (Administrador de clínica o propio Profesional)
+router.delete('/:id', autorizarRoles(['administrador de clínica', 'profesional de salud']), async (req, res) => {
     try {
         const { id } = req.params;
         const clinicId = req.user.clinicId;
@@ -246,7 +254,11 @@ router.delete('/:id', autorizarRoles(['administrador de clínica']), async (req,
     } catch (error) {
         console.error('Error al desactivar horario:', error);
 
-        if (error.message && error.message.includes('Solo el administrador')) {
+        if (
+            error.message &&
+            (error.message.includes('Solo el administrador') ||
+             error.message.includes('Solo puede gestionar sus propios'))
+        ) {
             return res.status(403).json({
                 status: 'error',
                 message: error.message

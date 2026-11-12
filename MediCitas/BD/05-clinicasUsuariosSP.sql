@@ -309,14 +309,14 @@ SECURITY DEFINER
 SET search_path = pg_catalog, public, pg_temp
 AS $$
 BEGIN
-    -- Validar que el usuario sea recepcionista activo
+    -- Validar que el usuario sea recepción o administrador de clínica activo
     -- y pertenezca a la clínica correspondiente.
     IF NOT EXISTS (
         SELECT 1
         FROM public.users u
         WHERE u.userid = p_auditpersonid
           AND u.clinicid = p_clinicid
-          AND u.roleid = 3
+          AND u.roleid IN (2, 3)
           AND u.isactive = TRUE
     ) THEN
         RAISE EXCEPTION 'Acceso denegado.';

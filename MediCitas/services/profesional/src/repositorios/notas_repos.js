@@ -98,7 +98,48 @@ async function consultarNota(appointmentId, clinicId, auditPersonId) {
     }
 }
 
+// RF15: Modificar nota clínica existente mediante el procedimiento almacenado actualizarnota
+async function actualizarNota(notaId, contenido, clinicId, auditPersonId) {
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        // Establecer el contexto de la clínica para RLS
+        await client.query(
+            "SELECT set_config('app.clinic_id', $1, true)",
+            [String(clinicId)]
+        );
+
+        await client.query(
+            'CALL actualizarnota($1, $2, $3, $4)',
+            [
+                clinicId,
+                auditPersonId,
+                notaId,
+                contenido
+            ]
+        );
+
+        await client.query('COMMIT');
+
+        return {
+            id: Number(notaId),
+            contenido,
+            actualizada: true
+        };
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+
+    } finally {
+        client.release();
+    }
+}
+
 module.exports = {
     crearNota,
-    consultarNota
+    consultarNota,
+    actualizarNota
 };

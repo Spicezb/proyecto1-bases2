@@ -53,8 +53,6 @@ BEGIN
                 -- admin general
                 ('crearclinica', 'rol_admin_general'),
                 ('consultarclinicas', 'rol_admin_general'),
-                ('contarcitasporestado', 'rol_recepcion'),
-                ('obtenerdetallecita', 'rol_recepcion'),
 
                 -- admin de la clínica
                 ('crearusuario', 'rol_admin_clinica'),
@@ -66,6 +64,9 @@ BEGIN
                 ('actualizarprofesional', 'rol_admin_clinica'),
                 ('consultarprofesionales', 'rol_admin_clinica'),
                 ('asignarservicioprofesional', 'rol_admin_clinica'),
+                ('asignarespecialidad', 'rol_admin_clinica'),
+                ('actualizarprofesionalespecialidades', 'rol_admin_clinica'),
+                ('consultarserviciosprofesional', 'rol_admin_clinica'),
 
                 ('crearservicio', 'rol_admin_clinica'),
                 ('actualizarservicio', 'rol_admin_clinica'),
@@ -76,6 +77,7 @@ BEGIN
                 ('crearbloqueo', 'rol_admin_clinica'),
                 ('actualizarbloqueo', 'rol_admin_clinica'),
                 ('consultarhorarios', 'rol_admin_clinica'),
+                ('consultarbloqueos', 'rol_admin_clinica'),
 
                 ('crearpaciente', 'rol_admin_clinica'),
                 ('actualizarpaciente', 'rol_admin_clinica'),
@@ -90,6 +92,7 @@ BEGIN
 
                 ('consultarlogs', 'rol_admin_clinica'),
                 ('contarcitasporestado', 'rol_admin_clinica'),
+                ('obtenerdetallecita', 'rol_admin_clinica'),
 
                 -- recepción
                 ('consultardisponibilidad', 'rol_recepcion'),
@@ -105,6 +108,8 @@ BEGIN
 
                 ('consultaragenda', 'rol_recepcion'),
                 ('consultarcitaspaciente', 'rol_recepcion'),
+                ('contarcitasporestado', 'rol_recepcion'),
+                ('obtenerdetallecita', 'rol_recepcion'),
 
                 -- profesional
                 ('consultardisponibilidad', 'rol_profesional'),
@@ -115,10 +120,10 @@ BEGIN
                 ('crearbloqueo', 'rol_profesional'),
                 ('actualizarbloqueo', 'rol_profesional'),
                 ('consultarhorarios', 'rol_profesional'),
+                ('consultarbloqueos', 'rol_profesional'),
 
                 ('consultarpacientes', 'rol_profesional'),
 
-                ('reservarcita', 'rol_profesional'),
                 ('cambiarestadocita', 'rol_profesional'),
 
                 ('consultaragenda', 'rol_profesional'),

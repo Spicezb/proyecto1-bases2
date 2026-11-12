@@ -1,4 +1,3 @@
-
 const pool = require('../config/database');
 
 // Obtener profesionales de la clínica
@@ -8,49 +7,27 @@ async function obtenerProfesionales(clinicId, auditPersonId) {
     try {
         await client.query('BEGIN');
 
-        await client.query( "select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
+        await client.query("select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
 
-        const resultado = await client.query( `
-        SELECT
-            cp.clinicprofessionalid AS id,
-            cp.professionalid AS "profesionalId",
-            cp.userid AS "usuarioId",
-            cp.name AS nombre,
-            cp.lastname AS apellidos,
-            cp.licenseid AS licencia,
-            cp.isactive AS activo,
-            COALESCE(
-                ARRAY_AGG(DISTINCT s.name)
-                    FILTER (WHERE s.specialtyid IS NOT NULL),
-                ARRAY[]::varchar[]
-            ) AS especialidades
-        FROM consultarprofesionales($1, $2) cp
-        LEFT JOIN professionalspecialties ps
-            ON cp.professionalid = ps.professionalid
-            AND ps.isactive = TRUE
-        LEFT JOIN specialties s
-            ON ps.specialtyid = s.specialtyid
-            AND s.isactive = TRUE
-        WHERE cp.isactive = TRUE
-        GROUP BY
-            cp.clinicprofessionalid,
-            cp.professionalid,
-            cp.userid,
-            cp.name,
-            cp.lastname,
-            cp.licenseid,
-            cp.isactive
-        ORDER BY cp.lastname, cp.name
-        `,[
-        clinicId,
-        auditPersonId
-        ]);
+        const resultado = await client.query(`
+            SELECT
+                clinicprofessionalid AS id,
+                professionalid AS "profesionalId",
+                userid AS "usuarioId",
+                name AS nombre,
+                lastname AS apellidos,
+                licenseid AS licencia,
+                isactive AS activo,
+                especialidades
+            FROM consultarprofesionales($1, $2)
+            WHERE isactive = TRUE
+        `, [clinicId, auditPersonId]);
 
         await client.query('COMMIT');
 
         return resultado.rows;
 
-    }catch (error) {
+    } catch (error) {
         await client.query('ROLLBACK');
         throw error;
     } finally {
@@ -65,49 +42,27 @@ async function obtenerProfesionalPorId(id, clinicId, auditPersonId) {
     try {
         await client.query('BEGIN');
 
-        await client.query( "select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
+        await client.query("select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
 
         const resultado = await client.query(`
-        SELECT
-            cp.clinicprofessionalid AS id,
-            cp.professionalid AS "profesionalId",
-            cp.userid AS "usuarioId",
-            cp.name AS nombre,
-            cp.lastname AS apellidos,
-            cp.licenseid AS licencia,
-            cp.isactive AS activo,
-            COALESCE(
-                ARRAY_AGG(DISTINCT s.name)
-                    FILTER (WHERE s.specialtyid IS NOT NULL),
-                ARRAY[]::varchar[]
-            ) AS especialidades
-        FROM consultarprofesionales($1, $2) cp
-        LEFT JOIN professionalspecialties ps
-            ON cp.professionalid = ps.professionalid
-            AND ps.isactive = TRUE
-        LEFT JOIN specialties s
-            ON ps.specialtyid = s.specialtyid
-            AND s.isactive = TRUE
-        WHERE cp.clinicprofessionalid = $3
-        GROUP BY
-            cp.clinicprofessionalid,
-            cp.professionalid,
-            cp.userid,
-            cp.name,
-            cp.lastname,
-            cp.licenseid,
-            cp.isactive
-        `,[
-        clinicId,
-        auditPersonId,
-        id
-        ]);
+            SELECT
+                clinicprofessionalid AS id,
+                professionalid AS "profesionalId",
+                userid AS "usuarioId",
+                name AS nombre,
+                lastname AS apellidos,
+                licenseid AS licencia,
+                isactive AS activo,
+                especialidades
+            FROM consultarprofesionales($1, $2)
+            WHERE clinicprofessionalid = $3
+        `, [clinicId, auditPersonId, id]);
 
         await client.query('COMMIT');
 
         return resultado.rows[0];
-    
-    }catch (error) {
+
+    } catch (error) {
         await client.query('ROLLBACK');
         throw error;
     } finally {
@@ -123,11 +78,10 @@ async function registrarProfesional(datos, clinicId, auditPersonId) {
     try {
         await client.query('BEGIN');
 
-        await client.query( "select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
+        await client.query("select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
 
         await client.query(
-            `
-            CALL crearprofesional($1, $2, $3, $4)`,
+            `CALL crearprofesional($1, $2, $3, $4)`,
             [clinicId, auditPersonId, usuarioId, licencia]
         );
 
@@ -164,34 +118,16 @@ async function registrarProfesional(datos, clinicId, auditPersonId) {
 
         const consulta = await client.query(`
             SELECT
-                cp.clinicprofessionalid AS id,
-                cp.professionalid AS "profesionalId",
-                cp.userid AS "usuarioId",
-                cp.name AS nombre,
-                cp.lastname AS apellidos,
-                cp.licenseid AS licencia,
-                cp.isactive AS activo,
-                COALESCE(
-                    ARRAY_AGG(DISTINCT s.name)
-                        FILTER (WHERE s.specialtyid IS NOT NULL),
-                    ARRAY[]::varchar[]
-                ) AS especialidades
-            FROM consultarprofesionales($1, $2) cp
-            LEFT JOIN professionalspecialties ps
-                ON cp.professionalid = ps.professionalid
-                AND ps.isactive = TRUE
-            LEFT JOIN specialties s
-                ON ps.specialtyid = s.specialtyid
-                AND s.isactive = TRUE
-            WHERE cp.clinicprofessionalid = $3
-            GROUP BY
-                cp.clinicprofessionalid,
-                cp.professionalid,
-                cp.userid,
-                cp.name,
-                cp.lastname,
-                cp.licenseid,
-                cp.isactive
+                clinicprofessionalid AS id,
+                professionalid AS "profesionalId",
+                userid AS "usuarioId",
+                name AS nombre,
+                lastname AS apellidos,
+                licenseid AS licencia,
+                isactive AS activo,
+                especialidades
+            FROM consultarprofesionales($1, $2)
+            WHERE clinicprofessionalid = $3
         `, [clinicId, auditPersonId, clinicProfessionalId]);
 
         if (consulta.rows.length === 0) {
@@ -229,18 +165,17 @@ async function eliminarProfesional(id, clinicId, auditPersonId) {
     try {
         await client.query('BEGIN');
 
-        await client.query( "select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
+        await client.query("select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
 
         await client.query(
-        `
-        CALL actualizarprofesional($1, $2, $3, $4, $5)`,
-        [
-            clinicId,
-            auditPersonId,
-            actual.profesionalId,
-            actual.licencia,
-            false
-        ]
+            `CALL actualizarprofesional($1, $2, $3, $4, $5)`,
+            [
+                clinicId,
+                auditPersonId,
+                actual.profesionalId,
+                actual.licencia,
+                false
+            ]
         );
 
         await client.query('COMMIT');
@@ -250,7 +185,7 @@ async function eliminarProfesional(id, clinicId, auditPersonId) {
             activo: false
         };
 
-    }catch (error) {
+    } catch (error) {
         await client.query('ROLLBACK');
         throw error;
     } finally {
@@ -265,17 +200,16 @@ async function asociarServicio(id, servicioId, clinicId, auditPersonId) {
     try {
         await client.query('BEGIN');
 
-        await client.query( "select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
+        await client.query("select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
 
         await client.query(
-        `
-        CALL asignarservicioprofesional($1, $2, $3, $4)`,
-        [
-            clinicId,
-            auditPersonId,
-            id,
-            servicioId
-        ]
+            `CALL asignarservicioprofesional($1, $2, $3, $4)`,
+            [
+                clinicId,
+                auditPersonId,
+                id,
+                servicioId
+            ]
         );
 
         await client.query('COMMIT');
@@ -285,7 +219,7 @@ async function asociarServicio(id, servicioId, clinicId, auditPersonId) {
             servicioId: Number(servicioId)
         };
 
-    }catch (error) {
+    } catch (error) {
         await client.query('ROLLBACK');
         throw error;
     } finally {
@@ -293,41 +227,30 @@ async function asociarServicio(id, servicioId, clinicId, auditPersonId) {
     }
 }
 
-// Consultar servicios habilitados
-async function obtenerServiciosProfesional(id, clinicId) {
+// Consultar servicios habilitados del profesional mediante función almacenada
+async function obtenerServiciosProfesional(id, clinicId, auditPersonId) {
     const client = await pool.connect();
 
     try {
         await client.query('BEGIN');
 
-        await client.query( "select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
+        await client.query("select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
 
         const resultado = await client.query(`
-        SELECT
-            cps.clinicprofessionalserviceid AS id,
-            cs.clinicserviceid AS "servicioId",
-            s.name AS nombre,
-            sp.name AS especialidad,
-            cs.duration AS duracion
-        FROM clinicprofessionalservices cps
-        JOIN clinicservices cs
-            ON cs.clinicserviceid = cps.clinicserviceid
-        JOIN services s
-            ON s.serviceid = cs.serviceid
-        JOIN specialties sp
-            ON sp.specialtyid = s.specialtyid
-        WHERE cps.clinicprofessionalid = $1
-            AND cs.clinicid = $2
-            AND cps.isactive = TRUE
-            AND cs.isactive = TRUE
-        ORDER BY s.name ASC
-        `,[id, clinicId]);
+            SELECT
+                clinicprofessionalserviceid AS id,
+                clinicserviceid AS "servicioId",
+                servicename AS nombre,
+                specialtyname AS especialidad,
+                duration AS duracion
+            FROM consultarserviciosprofesional($1, $2, $3)
+        `, [clinicId, auditPersonId, id]);
 
         await client.query('COMMIT');
 
         return resultado.rows;
 
-    }catch (error) {
+    } catch (error) {
         await client.query('ROLLBACK');
         throw error;
     } finally {
@@ -342,7 +265,7 @@ async function actualizarProfesional(id, datos, clinicId, auditPersonId) {
     try {
         await client.query('BEGIN');
 
-        await client.query( "select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
+        await client.query("select set_config('app.clinic_id', $1, true)", [String(clinicId)]);
 
         const previo = await client.query(`
             SELECT
@@ -351,7 +274,7 @@ async function actualizarProfesional(id, datos, clinicId, auditPersonId) {
                 licenseid AS licencia
             FROM consultarprofesionales($1, $2)
             WHERE clinicprofessionalid = $3
-            AND isactive = TRUE
+              AND isactive = TRUE
         `, [clinicId, auditPersonId, id]);
 
         if (previo.rows.length === 0) {
@@ -381,28 +304,13 @@ async function actualizarProfesional(id, datos, clinicId, auditPersonId) {
 
         const resultado = await client.query(`
             SELECT
-                cp.clinicprofessionalid AS id,
-                cp.professionalid AS "profesionalId",
-                cp.licenseid AS licencia,
-                cp.isactive AS activo,
-                COALESCE(
-                    ARRAY_AGG(DISTINCT s.name)
-                        FILTER (WHERE s.specialtyid IS NOT NULL),
-                    ARRAY[]::varchar[]
-                ) AS especialidades
-            FROM consultarprofesionales($1, $2) cp
-            LEFT JOIN professionalspecialties ps
-                ON ps.professionalid = cp.professionalid
-                AND ps.isactive = TRUE
-            LEFT JOIN specialties s
-                ON s.specialtyid = ps.specialtyid
-                AND s.isactive = TRUE
-            WHERE cp.clinicprofessionalid = $3
-            GROUP BY
-                cp.clinicprofessionalid,
-                cp.professionalid,
-                cp.licenseid,
-                cp.isactive
+                clinicprofessionalid AS id,
+                professionalid AS "profesionalId",
+                licenseid AS licencia,
+                isactive AS activo,
+                especialidades
+            FROM consultarprofesionales($1, $2)
+            WHERE clinicprofessionalid = $3
         `, [clinicId, auditPersonId, id]);
 
         await client.query('COMMIT');

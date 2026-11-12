@@ -10,28 +10,34 @@ CREATE OR REPLACE PROCEDURE crearhorario(
 )
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_roleid INT;
+    v_target_userid INT;
 BEGIN
-    -- Validar administrador de clínica
-    IF NOT EXISTS (
-        SELECT 1
-        FROM users
-        WHERE userid = p_auditpersonid
-          AND clinicid = p_clinicid
-          AND roleid = 2
-          AND isactive = TRUE
-    ) THEN
-        RAISE EXCEPTION 'Solo el administrador de clínica puede crear horarios.';
+    -- Validar administrador de clínica o profesional de salud activo en la clínica
+    SELECT roleid INTO v_roleid
+    FROM users
+    WHERE userid = p_auditpersonid
+      AND clinicid = p_clinicid
+      AND isactive = TRUE;
+
+    IF v_roleid IS NULL OR v_roleid NOT IN (2, 4) THEN
+        RAISE EXCEPTION 'Solo el administrador de clínica o el propio profesional puede crear horarios.';
     END IF;
 
-    -- Validar profesional
-    IF NOT EXISTS (
-        SELECT 1
-        FROM clinicprofessionals
-        WHERE clinicprofessionalid = p_clinicprofessionalid
-          AND clinicid = p_clinicid
-          AND isactive = TRUE
-    ) THEN
+    -- Validar profesional y pertenencia cuando actúa un profesional
+    SELECT userid INTO v_target_userid
+    FROM clinicprofessionals
+    WHERE clinicprofessionalid = p_clinicprofessionalid
+      AND clinicid = p_clinicid
+      AND isactive = TRUE;
+
+    IF NOT FOUND THEN
         RAISE EXCEPTION 'El profesional no pertenece a esta clínica o está inactivo.';
+    END IF;
+
+    IF v_roleid = 4 AND v_target_userid <> p_auditpersonid THEN
+        RAISE EXCEPTION 'Solo puede gestionar sus propios horarios.';
     END IF;
 
     IF p_day NOT BETWEEN 1 AND 7 THEN
@@ -68,17 +74,19 @@ CREATE OR REPLACE PROCEDURE actualizarhorario(
 )
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_roleid INT;
+    v_target_userid INT;
 BEGIN
-    -- Validar administrador de clínica
-    IF NOT EXISTS (
-        SELECT 1
-        FROM users
-        WHERE userid = p_auditpersonid
-          AND clinicid = p_clinicid
-          AND roleid = 2
-          AND isactive = TRUE
-    ) THEN
-        RAISE EXCEPTION 'Solo el administrador de clínica puede actualizar horarios.';
+    -- Validar administrador de clínica o profesional de salud activo en la clínica
+    SELECT roleid INTO v_roleid
+    FROM users
+    WHERE userid = p_auditpersonid
+      AND clinicid = p_clinicid
+      AND isactive = TRUE;
+
+    IF v_roleid IS NULL OR v_roleid NOT IN (2, 4) THEN
+        RAISE EXCEPTION 'Solo el administrador de clínica o el propio profesional puede actualizar horarios.';
     END IF;
 
     IF p_day NOT BETWEEN 1 AND 7 THEN
@@ -89,24 +97,29 @@ BEGIN
         RAISE EXCEPTION 'La hora de finalización debe ser posterior a la hora de inicio.';
     END IF;
 
+    SELECT cp.userid INTO v_target_userid
+    FROM professionalschedules ps
+    JOIN clinicprofessionals cp
+      ON cp.clinicprofessionalid = ps.clinicprofessionalid
+    WHERE ps.professionalscheduleid = p_professionalscheduleid
+      AND cp.clinicid = p_clinicid
+      AND cp.isactive = TRUE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Horario no encontrado en esta clínica.';
+    END IF;
+
+    IF v_roleid = 4 AND v_target_userid <> p_auditpersonid THEN
+        RAISE EXCEPTION 'Solo puede gestionar sus propios horarios.';
+    END IF;
+
     UPDATE professionalschedules ps
     SET day = p_day,
         starttime = p_starttime,
         endtime = p_endtime,
         isactive = p_isactive,
         updatedat = NOW()
-    WHERE ps.professionalscheduleid = p_professionalscheduleid
-      AND EXISTS (
-          SELECT 1
-          FROM clinicprofessionals cp
-          WHERE cp.clinicprofessionalid = ps.clinicprofessionalid
-            AND cp.clinicid = p_clinicid
-            AND cp.isactive = TRUE
-      );
-
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Horario no encontrado en esta clínica.';
-    END IF;
+    WHERE ps.professionalscheduleid = p_professionalscheduleid;
 END;
 $$;
 
@@ -120,27 +133,33 @@ CREATE OR REPLACE PROCEDURE crearbloqueo(
 )
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_roleid INT;
+    v_target_userid INT;
 BEGIN
-    -- Validar administrador de clínica
-    IF NOT EXISTS (
-        SELECT 1
-        FROM users
-        WHERE userid = p_auditpersonid
-          AND clinicid = p_clinicid
-          AND roleid = 2
-          AND isactive = TRUE
-    ) THEN
-        RAISE EXCEPTION 'Solo el administrador de clínica puede crear bloqueos.';
+    -- Validar administrador de clínica o profesional de salud activo en la clínica
+    SELECT roleid INTO v_roleid
+    FROM users
+    WHERE userid = p_auditpersonid
+      AND clinicid = p_clinicid
+      AND isactive = TRUE;
+
+    IF v_roleid IS NULL OR v_roleid NOT IN (2, 4) THEN
+        RAISE EXCEPTION 'Solo el administrador de clínica o el propio profesional puede crear bloqueos.';
     END IF;
 
-    IF NOT EXISTS (
-        SELECT 1
-        FROM clinicprofessionals
-        WHERE clinicprofessionalid = p_clinicprofessionalid
-          AND clinicid = p_clinicid
-          AND isactive = TRUE
-    ) THEN
+    SELECT userid INTO v_target_userid
+    FROM clinicprofessionals
+    WHERE clinicprofessionalid = p_clinicprofessionalid
+      AND clinicid = p_clinicid
+      AND isactive = TRUE;
+
+    IF NOT FOUND THEN
         RAISE EXCEPTION 'El profesional no pertenece a esta clínica o está inactivo.';
+    END IF;
+
+    IF v_roleid = 4 AND v_target_userid <> p_auditpersonid THEN
+        RAISE EXCEPTION 'Solo puede gestionar sus propios bloqueos.';
     END IF;
 
     IF p_enddatetime <= p_startdatetime THEN
@@ -175,28 +194,34 @@ CREATE OR REPLACE PROCEDURE actualizarbloqueo(
 )
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_roleid INT;
+    v_target_userid INT;
 BEGIN
-    -- Validar administrador de clínica
-    IF NOT EXISTS (
-        SELECT 1
-        FROM users
-        WHERE userid = p_auditpersonid
-          AND clinicid = p_clinicid
-          AND roleid = 2
-          AND isactive = TRUE
-    ) THEN
-        RAISE EXCEPTION 'Solo el administrador de clínica puede modificar bloqueos.';
+    -- Validar administrador de clínica o profesional de salud activo en la clínica
+    SELECT roleid INTO v_roleid
+    FROM users
+    WHERE userid = p_auditpersonid
+      AND clinicid = p_clinicid
+      AND isactive = TRUE;
+
+    IF v_roleid IS NULL OR v_roleid NOT IN (2, 4) THEN
+        RAISE EXCEPTION 'Solo el administrador de clínica o el propio profesional puede modificar bloqueos.';
     END IF;
 
-    IF NOT EXISTS (
-        SELECT 1
-        FROM scheduleblocks sb
-        JOIN clinicprofessionals cp
-          ON cp.clinicprofessionalid = sb.clinicprofessionalid
-        WHERE sb.scheduleblockid = p_scheduleblockid
-          AND cp.clinicid = p_clinicid
-    ) THEN
+    SELECT cp.userid INTO v_target_userid
+    FROM scheduleblocks sb
+    JOIN clinicprofessionals cp
+      ON cp.clinicprofessionalid = sb.clinicprofessionalid
+    WHERE sb.scheduleblockid = p_scheduleblockid
+      AND cp.clinicid = p_clinicid;
+
+    IF NOT FOUND THEN
         RAISE EXCEPTION 'Bloqueo no encontrado en esta clínica.';
+    END IF;
+
+    IF v_roleid = 4 AND v_target_userid <> p_auditpersonid THEN
+        RAISE EXCEPTION 'Solo puede gestionar sus propios bloqueos.';
     END IF;
 
     -- Operación 1: actualizar
@@ -317,6 +342,88 @@ BEGIN
           AND (p_clinicprofessionalid IS NULL
                OR cp.clinicprofessionalid = p_clinicprofessionalid);
 
+    END IF;
+END;
+$$;
+
+
+CREATE OR REPLACE FUNCTION consultarbloqueos(
+    p_clinicid INT,
+    p_auditpersonid INT,
+    p_clinicprofessionalid INT DEFAULT NULL,
+    p_scheduleblockid INT DEFAULT NULL
+)
+RETURNS TABLE (
+    scheduleblockid INT,
+    clinicprofessionalid INT,
+    professionalname TEXT,
+    startdatetime TIMESTAMPTZ,
+    enddatetime TIMESTAMPTZ,
+    reason VARCHAR,
+    isactive BOOLEAN
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_roleid INT;
+BEGIN
+    SELECT roleid
+    INTO v_roleid
+    FROM users
+    WHERE userid = p_auditpersonid
+      AND clinicid = p_clinicid
+      AND isactive = TRUE;
+
+    IF v_roleid IS NULL OR v_roleid NOT IN (2, 3, 4) THEN
+        RAISE EXCEPTION 'Acceso denegado.';
+    END IF;
+
+    -- El profesional solo puede consultar sus propios bloqueos
+    IF v_roleid = 4 THEN
+        RETURN QUERY
+        SELECT
+            sb.scheduleblockid,
+            sb.clinicprofessionalid,
+            (u.name || ' ' || u.lastname)::TEXT,
+            sb.startdatetime,
+            sb.enddatetime,
+            sb.reason,
+            sb.isactive
+        FROM scheduleblocks sb
+        JOIN clinicprofessionals cp
+          ON cp.clinicprofessionalid = sb.clinicprofessionalid
+        JOIN users u
+          ON u.userid = cp.userid
+        WHERE cp.clinicid = p_clinicid
+          AND cp.userid = p_auditpersonid
+          AND (p_clinicprofessionalid IS NULL
+               OR sb.clinicprofessionalid = p_clinicprofessionalid)
+          AND (p_scheduleblockid IS NULL
+               OR sb.scheduleblockid = p_scheduleblockid)
+          AND (p_scheduleblockid IS NOT NULL OR sb.isactive = TRUE)
+        ORDER BY sb.startdatetime ASC;
+    ELSE
+        RETURN QUERY
+        SELECT
+            sb.scheduleblockid,
+            sb.clinicprofessionalid,
+            (u.name || ' ' || u.lastname)::TEXT,
+            sb.startdatetime,
+            sb.enddatetime,
+            sb.reason,
+            sb.isactive
+        FROM scheduleblocks sb
+        JOIN clinicprofessionals cp
+          ON cp.clinicprofessionalid = sb.clinicprofessionalid
+        JOIN users u
+          ON u.userid = cp.userid
+        WHERE cp.clinicid = p_clinicid
+          AND (p_clinicprofessionalid IS NULL
+               OR sb.clinicprofessionalid = p_clinicprofessionalid)
+          AND (p_scheduleblockid IS NULL
+               OR sb.scheduleblockid = p_scheduleblockid)
+          AND (p_scheduleblockid IS NOT NULL OR sb.isactive = TRUE)
+        ORDER BY sb.startdatetime ASC;
     END IF;
 END;
 $$;

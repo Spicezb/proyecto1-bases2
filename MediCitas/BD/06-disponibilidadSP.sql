@@ -25,21 +25,30 @@ BEGIN
         RAISE EXCEPTION 'Acceso denegado.';
     END IF;
 
-    -- Validar que el profesional pertenezca a la clínica
-    -- y que el usuario tenga permiso para consultar su agenda
+    -- Validar que el profesional pertenezca a la clínica y esté activo
+    IF NOT EXISTS (
+        SELECT 1
+        FROM clinicprofessionals cp
+        WHERE cp.clinicprofessionalid = p_clinicprofessionalid
+          AND cp.clinicid = p_clinicid
+          AND cp.isactive
+    ) THEN
+        RAISE EXCEPTION 'El profesional no pertenece a esta clínica o está inactivo.';
+    END IF;
+
+    -- Validar que el usuario tenga permiso para consultar la agenda de ese profesional
     IF NOT EXISTS (
         SELECT 1
         FROM clinicprofessionals cp
         JOIN users u ON u.userid = p_auditpersonid
         WHERE cp.clinicprofessionalid = p_clinicprofessionalid
           AND cp.clinicid = p_clinicid
-          AND cp.isactive
           AND (
               u.roleid IN (2, 3)
               OR cp.userid = p_auditpersonid
           )
     ) THEN
-        RAISE EXCEPTION 'El profesional no pertenece a la clínica o el usuario no tiene permiso para consultar su agenda.';
+        RAISE EXCEPTION 'No tiene permiso para consultar la agenda de otro profesional.';
     END IF;
 
     RETURN QUERY

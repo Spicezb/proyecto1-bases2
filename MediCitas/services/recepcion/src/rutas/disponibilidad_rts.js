@@ -21,7 +21,8 @@ router.get('/profesional', autorizarRoles(['administrador de clínica', 'recepci
             clinicId,
             auditPersonId,
             profesionalId,
-            fecha
+            fecha,
+            req.user.roleName
         );
 
         if (resultado.error) {
@@ -35,7 +36,11 @@ router.get('/profesional', autorizarRoles(['administrador de clínica', 'recepci
     } catch (error) {
         console.error('Error al consultar disponibilidad del profesional:', error);
 
-        if (error.message && error.message.includes('Acceso denegado')) {
+        if (
+            error.message &&
+            (error.message.includes('Acceso denegado') ||
+             error.message.includes('No tiene permiso'))
+        ) {
             return res.status(403).json({
                 status: 'error',
                 message: error.message

@@ -258,3 +258,52 @@ BEGIN
 
 END;
 $$;
+
+
+CREATE OR REPLACE FUNCTION consultarserviciosprofesional(
+    p_clinicid INT,
+    p_auditpersonid INT,
+    p_clinicprofessionalid INT
+)
+RETURNS TABLE (
+    clinicprofessionalserviceid INT,
+    clinicserviceid INT,
+    servicename VARCHAR,
+    specialtyname VARCHAR,
+    duration INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM users u
+        WHERE u.userid = p_auditpersonid
+          AND u.clinicid = p_clinicid
+          AND u.roleid IN (2, 3, 4)
+          AND u.isactive = TRUE
+    ) THEN
+        RAISE EXCEPTION 'Acceso denegado.';
+    END IF;
+
+    RETURN QUERY
+    SELECT
+        cps.clinicprofessionalserviceid,
+        cs.clinicserviceid,
+        s.name,
+        sp.name,
+        cs.duration
+    FROM clinicprofessionalservices cps
+    JOIN clinicservices cs
+        ON cs.clinicserviceid = cps.clinicserviceid
+    JOIN services s
+        ON s.serviceid = cs.serviceid
+    JOIN specialties sp
+        ON sp.specialtyid = s.specialtyid
+    WHERE cps.clinicprofessionalid = p_clinicprofessionalid
+      AND cs.clinicid = p_clinicid
+      AND cps.isactive = TRUE
+      AND cs.isactive = TRUE
+    ORDER BY s.name ASC;
+END;
+$$;

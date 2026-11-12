@@ -10,6 +10,14 @@ router.get('/', autorizarRoles(['administrador de plataforma']), async (req, res
     res.status(200).json(resultado.clinicas);
     } catch (error) {
         console.error('Error al listar clínicas:', error);
+
+        if (error.message && error.message.includes('Solo el administrador de plataforma')) {
+            return res.status(403).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+
         res.status(500).json({
             status: 'error',
             message: 'Error interno del servidor.'

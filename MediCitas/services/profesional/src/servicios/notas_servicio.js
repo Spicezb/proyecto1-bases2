@@ -22,7 +22,21 @@ async function consultarNota(appointmentId, clinicId, auditPersonId) {
     return { nota };
 }
 
+async function actualizarNota(notaId, contenido, clinicId, auditPersonId) {
+    if (!/^[1-9]\d*$/.test(String(notaId))) {
+        return { error: 'El ID de la nota clínica debe ser un entero positivo.', status: 400 };
+    }
+
+    if (typeof contenido !== 'string' || !contenido.trim()) {
+        return { error: 'El contenido de la nota clínica es obligatorio.', status: 400 };
+    }
+
+    const nota = await notasRepositorio.actualizarNota(Number(notaId), contenido.trim(), clinicId, auditPersonId);
+    return { nota };
+}
+
 module.exports = {
     crearNota,
-    consultarNota
+    consultarNota,
+    actualizarNota
 };

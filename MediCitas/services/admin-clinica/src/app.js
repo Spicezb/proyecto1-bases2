@@ -36,19 +36,27 @@ app.use('/api/horarios', horariosRoutes);
 app.use('/api/bloqueos', bloqueosRoutes);
 app.use('/api/auditoria', auditoriaRoutes);
 
+// Ruta no encontrada
+app.use((req, res) => {
+    res.status(404).json({
+        status: 'error',
+        message: 'Ruta no encontrada.'
+    });
+});
+
 // Manejador de errores
 app.use((err, req, res, next) => {
     if (err.type === 'entity.parse.failed') {
         return res.status(400).json({
             status: 'error',
-            message: 'Entrada mal formada'
+            message: 'Entrada mal formada.'
         });
     }
 
     console.error(err);
     res.status(500).json({
         status: 'error',
-        message: 'Error interno del servidor'
+        message: 'Error interno del servidor.'
     });
 });
 

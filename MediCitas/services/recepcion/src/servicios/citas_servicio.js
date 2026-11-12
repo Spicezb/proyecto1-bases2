@@ -18,14 +18,22 @@ function esSoloFecha(fechaStr) {
     return !Number.isNaN(fecha.getTime()) && fecha.toISOString().slice(0, 10) === fechaStr;
 }
 
-// Extraer YYYY-MM-DD de un string ISO o fecha
-function extraerFecha(fechaHoraStr) {
-    try {
-        const d = new Date(fechaHoraStr);
-        return d.toISOString().slice(0, 10);
-    } catch {
-        return String(fechaHoraStr).slice(0, 10);
+// Invalidar la disponibilidad en Redis cubriendo el desfase entre UTC y la zona horaria local de la clínica (±1 día)
+async function invalidarDisponibilidadPorInstante(clinicId, profesionalId, fechaHoraStr) {
+    const base = new Date(fechaHoraStr);
+    if (Number.isNaN(base.getTime())) {
+        const fechaFallback = String(fechaHoraStr).slice(0, 10);
+        await redis.deleteCache(construirClaveDisponibilidad(clinicId, profesionalId, fechaFallback));
+        return;
     }
+
+    const claves = [-1, 0, 1].map((deltaDias) => {
+        const d = new Date(base.getTime() + deltaDias * 86400000);
+        const fecha = d.toISOString().slice(0, 10);
+        return construirClaveDisponibilidad(clinicId, profesionalId, fecha);
+    });
+
+    await Promise.all(claves.map((key) => redis.deleteCache(key)));
 }
 
 // RF9: Validar y reservar cita
@@ -72,9 +80,7 @@ async function reservarCita(datos, clinicId, auditPersonId) {
     );
 
     // Invariante I8: Invalidar explícitamente la caché de disponibilidad en Redis
-    const fecha = extraerFecha(fechaHora);
-    const cacheKey = construirClaveDisponibilidad(clinicId, profesionalId, fecha);
-    await redis.deleteCache(cacheKey);
+    await invalidarDisponibilidadPorInstante(clinicId, profesionalId, fechaHora);
 
     return { cita };
 }
@@ -123,8 +129,7 @@ async function reprogramarCita(id, datos, clinicId, auditPersonId) {
     );
 
     // Invariante I8: Invalidar caché para nuevo horario y horario previo
-    const nuevaFecha = extraerFecha(nuevaFechaHora);
-    await redis.deleteCache(construirClaveDisponibilidad(clinicId, nuevoProfesionalId, nuevaFecha));
+    await invalidarDisponibilidadPorInstante(clinicId, nuevoProfesionalId, nuevaFechaHora);
     if (cita.profesionalOriginalId && cita.fechaOriginal) {
         await redis.deleteCache(construirClaveDisponibilidad(clinicId, cita.profesionalOriginalId, cita.fechaOriginal));
     }

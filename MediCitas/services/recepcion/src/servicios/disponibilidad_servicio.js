@@ -16,7 +16,7 @@ function construirClaveDisponibilidad(clinicId, profesionalId, fecha) {
 }
 
 // RF7: Disponibilidad de un profesional en una fecha (con Caché L2 en Redis)
-async function consultarDisponibilidadProfesional(clinicId, auditPersonId, profesionalId, fecha) {
+async function consultarDisponibilidadProfesional(clinicId, auditPersonId, profesionalId, fecha, roleName = null) {
     if (!/^[1-9]\d*$/.test(String(profesionalId))) {
         return {
             error: 'El ID del profesional debe ser un entero positivo.',
@@ -31,15 +31,19 @@ async function consultarDisponibilidadProfesional(clinicId, auditPersonId, profe
         };
     }
 
+    // El SP restringe al profesional de salud a su propia agenda; omitir caché compartida evita lecturas indebidas
+    const usarCache = roleName !== 'profesional de salud';
     const cacheKey = construirClaveDisponibilidad(clinicId, profesionalId, fecha);
 
-    // 1. Intentar lectura desde Redis (Cache-Aside)
-    const datosCacheados = await redis.getCache(cacheKey);
-    if (datosCacheados) {
-        return { espacios: datosCacheados, origen: 'cache' };
+    if (usarCache) {
+        // 1. Intentar lectura desde Redis (Cache-Aside)
+        const datosCacheados = await redis.getCache(cacheKey);
+        if (datosCacheados) {
+            return { espacios: datosCacheados, origen: 'cache' };
+        }
     }
 
-    // 2. Cache Miss: Consultar la base de datos (PostgreSQL SP)
+    // 2. Cache Miss o consulta directa: Consultar la base de datos (PostgreSQL SP)
     const espacios = await disponibilidadRepositorio.consultarDisponibilidadProfesional(
         clinicId,
         auditPersonId,
@@ -47,8 +51,10 @@ async function consultarDisponibilidadProfesional(clinicId, auditPersonId, profe
         fecha
     );
 
-    // 3. Escribir en Redis con TTL de respaldo (fail-safe)
-    await redis.setCache(cacheKey, espacios);
+    if (usarCache) {
+        // 3. Escribir en Redis con TTL de respaldo (fail-safe)
+        await redis.setCache(cacheKey, espacios);
+    }
 
     return { espacios, origen: 'db' };
 }

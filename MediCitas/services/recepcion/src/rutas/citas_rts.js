@@ -104,14 +104,23 @@ router.put('/:id/reprogramar', autorizarRoles(['recepción', 'administrador de c
             });
         }
 
-        if (error.message && error.message.includes('Solo recepción')) {
+        if (
+            error.message &&
+            (error.message.includes('Solo recepción') ||
+             error.message.includes('Acceso denegado'))
+        ) {
             return res.status(403).json({
                 status: 'error',
                 message: error.message
             });
         }
 
-        if (error.message && error.message.includes('Cita vigente no encontrada')) {
+        if (
+            error.message &&
+            (error.message.includes('Cita vigente no encontrada') ||
+             error.message.includes('Servicio no disponible en la clínica') ||
+             error.message.includes('Servicio no disponible para el profesional'))
+        ) {
             return res.status(404).json({
                 status: 'error',
                 message: error.message
@@ -151,7 +160,11 @@ router.put('/:id/cancelar', autorizarRoles(['recepción', 'administrador de clí
     } catch (error) {
         console.error('Error al cancelar cita:', error);
 
-        if (error.message && error.message.includes('Solo recepción')) {
+        if (
+            error.message &&
+            (error.message.includes('Solo recepción') ||
+             error.message.includes('Acceso denegado'))
+        ) {
             return res.status(403).json({
                 status: 'error',
                 message: error.message
@@ -205,7 +218,12 @@ router.put('/:id/desenlace', autorizarRoles(['profesional de salud', 'recepción
     } catch (error) {
         console.error('Error al registrar desenlace de cita:', error);
 
-        if (error.message && error.message.includes('Solo el profesional')) {
+        if (
+            error.message &&
+            (error.message.includes('Solo el profesional') ||
+             error.message.includes('Solo recepción') ||
+             error.message.includes('Acceso denegado'))
+        ) {
             return res.status(403).json({
                 status: 'error',
                 message: error.message

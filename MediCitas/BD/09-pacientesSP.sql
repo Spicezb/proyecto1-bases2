@@ -18,16 +18,16 @@ DECLARE
     v_clinicpatientid INT;
     v_patientactive BOOLEAN;
 BEGIN
-    -- Validar que el usuario sea recepción
+    -- Validar que el usuario sea recepción o administrador de clínica
     IF NOT EXISTS (
         SELECT 1
         FROM users
         WHERE userid = p_auditpersonid
           AND clinicid = p_clinicid
-          AND roleid = 3
+          AND roleid IN (2, 3)
           AND isactive = TRUE
     ) THEN
-        RAISE EXCEPTION 'Solo recepción puede registrar pacientes.';
+        RAISE EXCEPTION 'Solo recepción o el administrador de clínica puede registrar pacientes.';
     END IF;
 
     -- Buscar si el paciente ya existe globalmente
@@ -168,16 +168,16 @@ AS $$
 DECLARE
     v_patientid INT;
 BEGIN
-    -- Validar que el usuario sea recepción
+    -- Validar que el usuario sea recepción o administrador de clínica
     IF NOT EXISTS (
         SELECT 1
         FROM users
         WHERE userid = p_auditpersonid
           AND clinicid = p_clinicid
-          AND roleid = 3
+          AND roleid IN (2, 3)
           AND isactive = TRUE
     ) THEN
-        RAISE EXCEPTION 'Solo recepción puede actualizar pacientes.';
+        RAISE EXCEPTION 'Solo recepción o el administrador de clínica puede actualizar pacientes.';
     END IF;
 
     -- Obtener el paciente asociado a la clínica

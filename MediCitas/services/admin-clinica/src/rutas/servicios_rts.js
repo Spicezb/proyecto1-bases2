@@ -31,7 +31,7 @@ router.get('/', autorizarRoles(['administrador de clínica', 'recepción', 'prof
 
         res.status(500).json({
             status: 'error',
-            message: 'Error interno del servidor al consultar servicios médicos.'
+            message: 'Error interno del servidor.'
         });
     }
 });

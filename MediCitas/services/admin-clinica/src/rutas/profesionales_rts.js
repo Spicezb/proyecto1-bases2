@@ -31,7 +31,7 @@ router.get('/', autorizarRoles(['administrador de clínica', 'recepción', 'prof
 
         res.status(500).json({
             status: 'error',
-            message: 'Error interno del servidor al consultar profesionales.'
+            message: 'Error interno del servidor.'
         });
     }
 });
@@ -86,8 +86,9 @@ router.get('/:id/servicios', autorizarRoles(['administrador de clínica', 'recep
     try {
         const { id } = req.params;
         const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
 
-        const resultado = await profesionalesService.obtenerServiciosProfesional(id, clinicId);
+        const resultado = await profesionalesService.obtenerServiciosProfesional(id, clinicId, auditPersonId);
 
         if (resultado.error) {
             return res.status(resultado.status).json({
@@ -99,6 +100,13 @@ router.get('/:id/servicios', autorizarRoles(['administrador de clínica', 'recep
         res.status(200).json(resultado.servicios);
     } catch (error) {
         console.error('Error al consultar servicios del profesional:', error);
+
+        if (error.message && error.message.includes('Acceso denegado')) {
+            return res.status(403).json({
+                status: 'error',
+                message: error.message
+            });
+        }
 
         res.status(500).json({
             status: 'error',
@@ -213,6 +221,20 @@ router.post('/:id/servicios', autorizarRoles(['administrador de clínica']), asy
             });
         }
 
+        if (error.message && error.message.includes('no posee la especialidad requerida')) {
+            return res.status(400).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+
+        if (error.code === '23505') {
+            return res.status(409).json({
+                status: 'error',
+                message: 'El servicio ya está asociado al profesional.'
+            });
+        }
+
         res.status(500).json({
             status: 'error',
             message: 'Error interno del servidor.'
@@ -245,17 +267,47 @@ router.put('/:id', autorizarRoles(['administrador de clínica']), async (req, re
     } catch (error) {
         console.error('Error al actualizar profesional:', error);
 
-        if (error.message && error.message.includes('Solo el administrador')) {
+        if (
+            error.message &&
+            (error.message.includes('Solo el administrador') ||
+             error.message.includes('Solo un administrador'))
+        ) {
             return res.status(403).json({
                 status: 'error',
                 message: error.message
             });
         }
 
-        if (error.message && error.message.includes('no está asociado activamente')) {
+        if (
+            error.message &&
+            (error.message.includes('no está asociado activamente') ||
+             error.message.includes('Profesional no encontrado'))
+        ) {
             return res.status(404).json({
                 status: 'error',
                 message: error.message
+            });
+        }
+
+        if (error.message && error.message.includes('especialidades son inválidas')) {
+            return res.status(400).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+
+        if (
+            error.code === '23505' ||
+            (error.message &&
+             (error.message.includes('citas futuras reservadas') ||
+              error.message.includes('profesional compartido') ||
+              error.message.includes('retirar especialidades')))
+        ) {
+            return res.status(409).json({
+                status: 'error',
+                message: error.code === '23505'
+                    ? 'La identificación, correo o colegiado ya se encuentra registrado.'
+                    : error.message
             });
         }
 
@@ -296,6 +348,20 @@ router.delete('/:id', autorizarRoles(['administrador de clínica']), async (req,
 
         if (error.message && error.message.includes('Solo el administrador')) {
             return res.status(403).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+
+        if (error.message && error.message.includes('no está asociado activamente')) {
+            return res.status(404).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+
+        if (error.message && error.message.includes('citas futuras reservadas')) {
+            return res.status(409).json({
                 status: 'error',
                 message: error.message
             });

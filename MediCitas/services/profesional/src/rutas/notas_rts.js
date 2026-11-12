@@ -20,6 +20,12 @@ router.post('/', autorizarRoles(['profesional de salud']), async (req, res) => {
         if (error.message && error.message.includes('Solo el profesional asignado')) {
             return res.status(403).json({ status: 'error', message: error.message });
         }
+        if (error.message && error.message.includes('contenido de la nota clínica es obligatorio')) {
+            return res.status(400).json({ status: 'error', message: error.message });
+        }
+        if (error.code === '23505') {
+            return res.status(409).json({ status: 'error', message: 'Ya existe una nota clínica registrada para esta cita.' });
+        }
         res.status(500).json({ status: 'error', message: 'Error interno del servidor.' });
     }
 });
@@ -43,6 +49,31 @@ router.get('/:citaId', autorizarRoles(['profesional de salud']), async (req, res
         console.error('Error al consultar nota clínica:', error);
         if (error.message && error.message.includes('Solo el profesional asignado')) {
             return res.status(403).json({ status: 'error', message: error.message });
+        }
+        res.status(500).json({ status: 'error', message: 'Error interno del servidor.' });
+    }
+});
+
+// PUT /api/notas/:id - RF15: Modificar nota clínica de una cita atendida
+router.put('/:id', autorizarRoles(['profesional de salud']), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { contenido } = req.body || {};
+        const clinicId = req.user.clinicId;
+        const auditPersonId = req.user.userId;
+
+        const resultado = await notasService.actualizarNota(id, contenido, clinicId, auditPersonId);
+        if (resultado.error) {
+            return res.status(resultado.status).json({ status: 'error', message: resultado.error });
+        }
+        res.status(200).json(resultado.nota);
+    } catch (error) {
+        console.error('Error al actualizar nota clínica:', error);
+        if (error.message && error.message.includes('Solo el profesional que elaboró la nota')) {
+            return res.status(403).json({ status: 'error', message: error.message });
+        }
+        if (error.message && error.message.includes('contenido de la nota clínica es obligatorio')) {
+            return res.status(400).json({ status: 'error', message: error.message });
         }
         res.status(500).json({ status: 'error', message: 'Error interno del servidor.' });
     }
