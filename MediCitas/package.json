@@ -1,0 +1,7 @@
+{
+  "name": "medicitas",
+  "private": true,
+  "scripts": {
+    "test": "node scripts/test.js"
+  }
+}
