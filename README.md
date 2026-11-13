@@ -436,7 +436,7 @@ Todos los Procedimientos y Funciones del sistema están catalogados a continuaci
 
 #### Archivo `BD/03-auditoriaSP.sql`
 - **`registrarlog(...)`**: Procedimiento interno sin acceso público. Registra acciones en la bitácora `auditlogs`. Invocado por los demás procedimientos.
-- **`consultarlogs(p_clinicid, p_auditpersonid, p_filterpersonid, p_clinicpatientid, p_startdate, p_enddate)`**: Función que retorna los registros de auditoría filtrados. Permiso concedido a: `rol_admin_clinica`.
+- **consultarlogs(p_clinicid, p_auditpersonid, p_filterpersonid, p_clinicpatientid, p_startdate, p_enddate)**: Función que retorna los registros de auditoría enriquecidos mediante JOINs (con identificación y nombre del usuario ejecutor, nombre legible de la acción, tabla y resultado). Permiso concedido a: ol_admin_clinica.
 
 #### Archivo `BD/04-citasAgendaSP.sql`
 - **`reservarcita(p_clinicid, p_auditpersonid, p_clinicpatientid, p_clinicprofessionalid, p_clinicserviceid, p_date, OUT p_appointmentid)`**: Reserva una cita tras validar que el paciente y médico pertenezcan a la clínica, que el médico preste el servicio, y que el horario esté dentro de su jornada laboral y fuera de bloqueos. Permiso concedido a: `rol_admin_clinica`, `rol_recepcion`.
