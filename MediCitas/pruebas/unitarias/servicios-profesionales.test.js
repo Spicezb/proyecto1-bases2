@@ -1,3 +1,12 @@
+jest.mock('../../services/admin-clinica/src/config/redis', () => ({
+    getCache: jest.fn(),
+    setCache: jest.fn(),
+    deleteCache: jest.fn(),
+    deleteKeysByPattern: jest.fn(),
+    isRedisReady: jest.fn(() => false),
+    redisClient: {},
+    DEFAULT_TTL: 900
+}));
 
 jest.mock('../../services/admin-clinica/src/repositorios/servicios_repos', () => ({
     registrarServicio: jest.fn(),
