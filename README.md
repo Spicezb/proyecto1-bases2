@@ -39,7 +39,13 @@
 9. [Estándar Global de Respuestas y Manejo de Errores](#9-estándar-global-de-respuestas-y-manejo-de-errores)
 10. [Justificación de Decisiones Tecnológicas y de Diseño](#10-justificación-de-decisiones-tecnológicas-y-de-diseño)
 11. [Guía de Despliegue, Configuración y Puesta en Marcha](#11-guía-de-despliegue-configuración-y-puesta-en-marcha)
-12. [Autores y Créditos del Proyecto](#12-autores-y-créditos-del-proyecto)
+12. [Demostración en Video y Guía Integral de Pruebas](#12-demostración-en-video-y-guía-integral-de-pruebas)
+    - 12.1. Video Demostrativo Oficial
+    - 12.2. Cronología y Resumen Estructurado del Video
+    - 12.3. Arquitectura y Archivos de la Suite de Pruebas (`pruebas/`)
+    - 12.4. Comportamiento y Salida Visual en Consola
+    - 12.5. Comandos de Ejecución (Global y Uno a Uno)
+13. [Autores y Créditos del Proyecto](#13-autores-y-créditos-del-proyecto)
 
 ---
 
@@ -131,8 +137,7 @@ MediCitas/
 ├── .env.example                     # Plantilla de variables de entorno para Docker Compose
 ├── .env.local                       # Variables de entorno para ejecución local fuera de contenedores
 ├── docker-compose.yml               # Orquestación global: 4 microservicios, Gateway, DB, Keycloak, Redis
-├── package.json                     # Configuración de pruebas globales del workspace
-├── prueba-concurrencia.js           # Script de prueba de estrés para citas simultáneas
+├── package.json                     # Scripts de ejecución (npm test, test:concurrencia, test:gateway, etc.)
 │
 ├── BD/                              # ================= MUNDO DE BASE DE DATOS =================
 │   ├── 01-creacion.sql              # DDL: Creación de tablas, llaves foráneas y restricciones EXCLUDE
@@ -159,22 +164,38 @@ MediCitas/
 ├── keycloak/                        # ================= GESTIÓN DE IDENTIDAD ===================
 │   └── realm-medicitas.json         # Exportación oficial del Realm: roles, clientes y usuarios semilla
 │
-├── pruebas/                         # ================= SUITE DE PRUEBAS AUTOMATIZADAS =========
-│   ├── jest.config.js               # Configuración de ejecución del framework Jest
-│   ├── package.json                 # Dependencias de prueba (jest, supertest, jsonwebtoken)
+├── pruebas/                         # ================= SUITE INTEGRAL DE PRUEBAS ==============
+│   ├── jest.config.js               # Configuración de Jest con carga de variables y reporter custom
+│   ├── package.json                 # Dependencias (jest, supertest, dotenv) y scripts de prueba
+│   ├── reporter.js                  # Reporter personalizado para Jest con tablas formateadas y métricas
 │   ├── helpers/
-│   │   └── auth.js                  # Utilidad para generar tokens y simular firmas en pruebas
-│   ├── integracion/
-│   │   ├── auth.test.js             # Pruebas de integración del flujo de autenticación y tokens
-│   │   └── gateway.test.js          # Pruebas de integración del Gateway y healthchecks
-│   └── unitarias/
-│       ├── agenda.test.js           # Pruebas unitarias de cálculo de agendas
-│       ├── clinicas.test.js         # Pruebas unitarias de creación de clínicas
-│       ├── servicios-profesionales.test.js # Pruebas unitarias de asignación de servicios
-│       └── usuarios.test.js         # Pruebas unitarias de ciclo de vida de usuarios
+│   │   ├── auth.js                  # Utilidad para obtener tokens JWT firmados desde Keycloak OIDC
+│   │   └── format.js                # Helper de formato ANSI: banners, badges, payloads JSON y tablas
+│   ├── integracion/                 # --- PRUEBAS DE INTEGRACIÓN (E2E CONTRA DOCKER) ---
+│   │   ├── concurrencia.js          # Demostración interactiva de exclusión temporal y overbooking
+│   │   ├── concurrencia.test.js     # Suite Jest de estrés de concurrencia
+│   │   ├── gateway.js               # Demostración interactiva de healthcheck y enrutamiento Nginx
+│   │   ├── gateway.test.js          # Suite Jest para el API Gateway
+│   │   ├── auth.js                  # Demostración interactiva de tokens JWT y RBAC por roles
+│   │   ├── auth.test.js             # Suite Jest para validación de tokens y 4 roles
+│   │   ├── aislamiento.js           # Demostración interactiva de Row Level Security (RLS)
+│   │   ├── aislamiento.test.js      # Suite Jest de aislamiento multi-tenant entre clínicas
+│   │   ├── invariantes.js           # Demostración interactiva de invariantes I1 a I8
+│   │   └── invariantes.test.js      # Suite Jest de validación de invariantes de negocio
+│   └── unitarias/                   # --- PRUEBAS UNITARIAS (LÓGICA PURA AISLADA) ---
+│       ├── usuarios.js              # Demostración de creación, cambio de rol y baja lógica
+│       ├── usuarios.test.js         # Suite Jest unitaria de usuarios
+│       ├── clinicas.js              # Demostración de sanitización y creación de clínicas
+│       ├── clinicas.test.js         # Suite Jest unitaria de sedes clínicas
+│       ├── agenda.js                # Demostración de horarios semanales y bloqueos
+│       ├── agenda.test.js           # Suite Jest unitaria de agenda y disponibilidad
+│       ├── servicios-profesionales.js # Demostración de registro de servicios y médicos
+│       ├── servicios-profesionales.test.js # Suite Jest unitaria de servicios y profesionales
+│       ├── citas.js                 # Demostración del ciclo de vida completo de citas
+│       └── citas.test.js            # Suite Jest unitaria del ciclo de citas
 │
 ├── scripts/
-│   └── test.js                      # Script utilitario en Node para orquestar la suite de pruebas
+│   └── test.js                      # Orquestador Node.js para ejecutar la suite completa de Jest
 │
 └── services/                        # ================= LOS 4 MICROSERVICIOS ===================
     │
@@ -436,7 +457,8 @@ Todos los Procedimientos y Funciones del sistema están catalogados a continuaci
 
 #### Archivo `BD/03-auditoriaSP.sql`
 - **`registrarlog(...)`**: Procedimiento interno sin acceso público. Registra acciones en la bitácora `auditlogs`. Invocado por los demás procedimientos.
-- **consultarlogs(p_clinicid, p_auditpersonid, p_filterpersonid, p_clinicpatientid, p_startdate, p_enddate)**: Función que retorna los registros de auditoría enriquecidos mediante JOINs (con identificación y nombre del usuario ejecutor, nombre legible de la acción, tabla y resultado). Permiso concedido a: ol_admin_clinica.
+- **consultarlogs(p_clinicid, p_auditpersonid, p_filterpersonid, p_clinicpatientid, p_startdate, p_enddate)**: Función que retorna los registros de auditoría enriquecidos mediante JOINs (con identificación y nombre del usuario ejecutor, nombre legible de la acción, tabla y resultado). Permiso concedido a: 
+ol_admin_clinica.
 
 #### Archivo `BD/04-citasAgendaSP.sql`
 - **`reservarcita(p_clinicid, p_auditpersonid, p_clinicpatientid, p_clinicprofessionalid, p_clinicserviceid, p_date, OUT p_appointmentid)`**: Reserva una cita tras validar que el paciente y médico pertenezcan a la clínica, que el médico preste el servicio, y que el horario esté dentro de su jornada laboral y fuera de bloqueos. Permiso concedido a: `rol_admin_clinica`, `rol_recepcion`.
@@ -1006,17 +1028,141 @@ Para correr las pruebas de integración y unitarias automatizadas:
 ```bash
 npm test
 ```
-*Este comando instala las dependencias en la carpeta `pruebas/` e invoca Jest para validar autenticación, Gateway, endpoints y lógica de negocio.*
+*Este comando orquesta Jest a través de `scripts/test.js` para validar autenticación, Gateway, endpoints y lógica de negocio (54 pruebas automáticas).*
 
-Para ejecutar la prueba de estrés de concurrencia y no-traslape de citas:
+Para ejecutar demostraciones individuales e interactivas de cada módulo con salidas en consola formateadas a color (concurrencia, healthcheck, RBAC, etc.), consulte la [Sección 12](#12-demostración-en-video-y-guía-integral-de-pruebas).
 
-```bash
-node prueba-concurrencia.js
+---
+
+## 12. Demostración en Video y Guía Integral de Pruebas
+
+### 12.1. Video Demostrativo Oficial
+
+Enlace oficial a la grabación audiovisual donde el equipo de ingeniería presenta el despliegue del sistema, la arquitectura perimetral, la seguridad OIDC con Keycloak, el flujo transaccional de citas médicas y la prueba física de concurrencia en PostgreSQL:
+
+> **Enlace al Video de Demostración:** [https://youtu.be/XYKN5GxtedU](https://youtu.be/XYKN5GxtedU)
+
+---
+
+### 12.2. Cronología y Resumen Estructurado del Video
+
+La demostración en video sigue un guion técnico estructurado en 6 bloques cronológicos clave:
+
+| Segmento de Tiempo | Actividad Demostrada | Resumen y Justificación Técnica |
+| :---: | :--- | :--- |
+| **0:00 – 0:45** | **Levantar MediCitas con Docker Compose y mostrar los servicios activos** | Ejecución de `docker compose up -d` y verificación del estado de salud (`healthy`) de los 7 contenedores del ecosistema: PostgreSQL 17, Keycloak 26, Redis 7, Nginx Gateway y los 4 microservicios en Express. |
+| **0:45 –  2:00** | **Autenticarse con Keycloak y consultar disponibilidad** | Solicitud y emisión de token JWT firmado asimétricamente (RS256) mediante el flujo OpenID Connect (OIDC) en Keycloak. Consulta de disponibilidad de citas en tiempo real a través del API Gateway consumiendo la caché L2 de Redis. |
+| **2:00 – 4:00** | **Reservar una cita y comprobar que aparece en la agenda** | Solicitud de reserva médica (`POST /api/citas`). Se demuestra la validación de roles, la ejecución del procedimiento almacenado `reservarcita`, el aislamiento multi-tenant por Row-Level Security (`app.clinic_id`), la invalidación quirúrgica de caché en Redis y la verificación inmediata en la agenda del profesional. |
+| **4:00 – 6:15** | **Registrar el desenlace de la cita y comprobar su estado** | Transición de ciclo de vida de la cita hacia el estado `atendida` mediante el procedimiento `cambiarestadocita`, confirmando la inmutabilidad de la bitácora de auditoría y la liberación del slot temporal. |
+| **6:15 – 8:45** | **Ejecutar la prueba de concurrencia y explicar por qué solo una reserva debe tener éxito** | Disparo simultáneo en el mismo milisegundo (`Promise.all`) de dos reservas para dos pacientes distintos compitiendo por exactamente el mismo espacio médico. Se evidencia cómo una obtiene `HTTP 201 Created` y la otra es rechazada con `HTTP 409 Conflict`. Se explica detalladamente por qué la garantía reside en el motor relacional mediante la restricción `EXCLUDE USING gist`, que evalúa el rango temporal `[fechaHora, fechaHora + duracion]` impidiendo físicamente el overbooking (Invariantes I1 e I2). |
+| **8:45 – 10:15** | **Mostrar resultados y cerrar la demostración** | Exhibición de los resultados en consola con métricas de latencia de red, confirmación de cero sobre-reservas y conclusiones sobre la robustez transaccional ACID y la arquitectura Zero-Trust de MediCitas. |
+
+---
+
+### 12.3. Arquitectura y Archivos de la Suite de Pruebas (`pruebas/`)
+
+Para asegurar la confiabilidad total del sistema sin duplicidad de carpetas, todas las pruebas se encuentran organizadas bajo el directorio `pruebas/` soportando dos modalidades complementarias:
+
+1. **Modo Automatizado con Jest (`*.test.js`)**: Diseñado para integración continua y validación masiva. Ejecuta 54 casos de prueba distribuidos en 10 suites asistidas por un reporter personalizado (`reporter.js`).
+2. **Modo Interactivo Standalone (`*.js`)**: Scripts independientes que se ejecutan directamente con `node` o `npm run`. No requieren banderas complejas de Jest y utilizan un helper de formateo visual (`helpers/format.js`) que despliega banners ANSI, badges con códigos HTTP a color, tiempos de respuesta en milisegundos y payloads JSON reales formateados.
+
+#### Archivos Implementados:
+- **`pruebas/helpers/format.js`**: Módulo de presentación en consola. Provee funciones para banners enmarcados en cian, badges con fondo a color (`HTTP 200/201` en verde, `HTTP 409` en amarillo, `HTTP 401/403` en magenta, `HTTP 400` en rojo), impresión de JSON indentado, cálculo de latencias y tarjetas de resumen final.
+- **`pruebas/helpers/auth.js`**: Cliente OIDC que se comunica directamente con el endpoint de tokens de Keycloak (`/realms/medicitas/protocol/openid-connect/token`) para autenticar los distintos roles del sistema (`12345`).
+- **`pruebas/reporter.js`**: Reporter personalizado para Jest que sustituye la salida cruda por tablas estructuradas con duración por caso y resumen consolidado.
+- **`pruebas/integracion/*.js`**: Scripts demostrativos para cada aspecto de integración (Gateway, Autenticación/RBAC, Aislamiento RLS, Invariantes y Concurrencia).
+- **`pruebas/unitarias/*.js`**: Scripts demostrativos para cada servicio de dominio con mocks de repositorios y Redis para ejecución instantánea sin efectos secundarios.
+
+---
+
+### 12.4. Comportamiento y Salida Visual en Consola
+
+Cada script interactivo ejecuta el caso, valida las aserciones en tiempo real y produce una salida estructurada y visual.
+
+Por ejemplo, al ejecutar la prueba de concurrencia:
+
+```text
+╔════════════════════════════════════════════════════════════════════╗
+║         PRUEBA DE INTEGRACIÓN: CONCURRENCIA Y OVERBOOKING          ║
+║           Demostración de Exclusión en PostgreSQL (GIST)           ║
+╚════════════════════════════════════════════════════════════════════╝
+
+1. Autenticando usuarios en Keycloak...
+   ✔ Recepción (luis-mora) Token JWT emitido (126ms)
+   ✔ Admin Clínica (ana-solis) Token JWT emitido
+
+2. Consultando catálogo y disponibilidad médica...
+   → Profesional seleccionado: Dra. María Rojas (Licencia: med-cr-001)
+   → Servicio a reservar: consulta general (30 min)
+   → Pacientes en competencia: Paciente 3 vs Paciente 6
+   → Espacio libre encontrado para competir: 2027-02-12T16:00:00.000Z
+
+3. Disparando DOS reservas simultáneas en el mismo milisegundo (Promise.all)...
+
+══════════════════════════ RESPUESTAS DEL SERVIDOR ══════════════════════════
+
+   Petición A (Recepción - Paciente 3):  HTTP 409 CONFLICT 
+     {
+       "status": "error",
+       "message": "El espacio solicitado no está disponible o ya fue reservado."
+     }
+
+   Petición B (Admin Clínica - Paciente 6):  HTTP 201 OK 
+     {
+       "pacienteId": 6,
+       "profesionalId": 5,
+       "servicioId": 2,
+       "fechaHora": "2027-02-12T16:00:00.000Z",
+       "estado": "reservada"
+     }
+
+╔════════════════════════════════════════════════════════════════════╗
+║  ✔ RESTRICCIÓN DE CONCURRENCIA VERIFICADA CON ÉXITO                ║
+╠════════════════════════════════════════════════════════════════════╣
+║  • Tiempo de resolución concurrente: 27ms
+║  • Exactamente 1 cita fue concedida (HTTP 201 Created) persistida en PostgreSQL.
+║  • La otra petición fue bloqueada en el índice GIST (HTTP 409 Conflict).
+║  • Invariantes I1 e I2 verificadas: 0 citas duplicadas (Overbooking IMPOSIBLE).
+╚════════════════════════════════════════════════════════════════════╝
 ```
 
 ---
 
-## 12. Autores y Créditos del Proyecto
+### 12.5. Comandos de Ejecución (Global y Uno a Uno)
+
+Desde el directorio raíz de `MediCitas`:
+
+#### A. Suite Completa Automatizada
+Para correr las 54 pruebas unitarias y de integración de una sola vez:
+```bash
+npm test
+```
+
+#### B. Pruebas de Integración (Requieren Docker activo)
+Prueban el flujo de extremo a extremo a través de Nginx, Keycloak, Express y PostgreSQL:
+
+| Prueba | Comando directo Node | Comando npm alternativo | Qué verifica |
+| :--- | :--- | :--- | :--- |
+| **Concurrencia (Overbooking)**  | `node pruebas/integracion/concurrencia.js` | `npm run test:concurrencia` | 2 reservas simultáneas; 1 gana (201), 1 se rechaza (409) vía GIST EXCLUDE. |
+| **API Gateway** | `node pruebas/integracion/gateway.js` | `npm run test:gateway` | Healthcheck `/health` en puerto 3000 y latencia del proxy perimetral Nginx. |
+| **Autenticación y RBAC** | `node pruebas/integracion/auth.js` | `npm run test:auth` | Emisión JWT de los 4 roles en Keycloak y bloqueo por roles en `/api/usuarios`. |
+| **Aislamiento Multi-Tenant** | `node pruebas/integracion/aislamiento.js` | `npm run test:aislamiento` | Row Level Security (RLS) bloquea lecturas y escrituras cruzadas entre clínicas. |
+| **Invariantes del Sistema** | `node pruebas/integracion/invariantes.js` | `npm run test:invariantes` | Comprobación de invariantes I1 a I8 (duración, liberación y caché Redis). |
+
+#### C. Pruebas Unitarias (Ejecución Instantánea en Aislamiento)
+Validan la lógica de negocio pura mediante mocks de repositorios y Redis, sin requerir contenedores activos:
+
+| Prueba | Comando directo Node | Comando npm alternativo | Qué verifica |
+| :--- | :--- | :--- | :--- |
+| **Gestión de Usuarios** | `node pruebas/unitarias/usuarios.js` | `npm run test:usuarios` | Validación de datos, asignación de roles [2, 3, 4] y baja lógica. |
+| **Servicio de Clínicas** | `node pruebas/unitarias/clinicas.js` | `npm run test:clinicas` | Sanitización de espacios en blanco (`trim`), validación de nombres y sedes. |
+| **Horarios y Bloqueos** | `node pruebas/unitarias/agenda.js` | `npm run test:agenda` | Horarios semanales, rechazo de rangos invertidos e ingreso de bloqueos. |
+| **Servicios y Médicos** | `node pruebas/unitarias/servicios-profesionales.js` | `npm run test:servicios` | Duración obligatoria > 0, asignación de licencias y compatibilidad de especialidades. |
+| **Ciclo de Vida de Citas** | `node pruebas/unitarias/citas.js` | `npm run test:citas` | Flujo de agendamiento, rechazo de datos inválidos, reprogramación y desenlaces. |
+
+---
+
+## 13. Autores y Créditos del Proyecto
 
 Este proyecto fue desarrollado para el curso de **Bases de Datos 2** por el equipo de ingeniería:
 
