@@ -45,7 +45,8 @@
     - 12.3. Arquitectura y Archivos de la Suite de Pruebas (`pruebas/`)
     - 12.4. Comportamiento y Salida Visual en Consola
     - 12.5. Comandos de Ejecución (Global y Uno a Uno)
-13. [Autores y Créditos del Proyecto](#13-autores-y-créditos-del-proyecto)
+13. [Declaración sobre el Uso de Herramientas de Inteligencia Artificial](#13-declaración-sobre-el-uso-de-herramientas-de-inteligencia-artificial)
+14. [Autores y Créditos del Proyecto](#14-autores-y-créditos-del-proyecto)
 
 ---
 
@@ -1162,7 +1163,31 @@ Validan la lógica de negocio pura mediante mocks de repositorios y Redis, sin r
 
 ---
 
-## 13. Autores y Créditos del Proyecto
+## 13. Declaración sobre el Uso de Herramientas de Inteligencia Artificial
+
+En cumplimiento con los más altos estándares de integridad académica, transparencia profesional y ética en la ingeniería de software, se declara de manera explícita el alcance y la naturaleza del uso de herramientas basadas en Inteligencia Artificial durante el ciclo de vida del proyecto **MediCitas**:
+
+1. **Rol Estrictamente Auxiliar y de Aceleración:**  
+   Las herramientas de Inteligencia Artificial se emplearon únicamente como asistentes para la investigación técnica preliminar, consulta de sintaxis específica y la generación acelerada de código base repetitivo y documentación de soporte.
+
+2. **Supervisión, Depuración y Criterio Técnico Obligatorio:**  
+   Ninguna línea de código fuente, consulta SQL, procedimiento almacenado en PL/pgSQL, política de seguridad o prueba de integración generada o sugerida por herramientas de IA fue incorporada al repositorio de forma automática o desatendida. Todo el material pasó por un exhaustivo proceso de revisión de código, reestructuración profunda, pruebas y verificación minuciosa bajo el criterio técnico e ingenieril de los integrantes del equipo.
+
+3. **Autoría Intelectual y Decisiones Arquitectónicas Exclusivas del Equipo Humano:**  
+   La totalidad de las decisiones estratégicas, principios de diseño y modelado de ingeniería corresponden **exclusivamente a los miembros del grupo de trabajo**. Esto comprende, de forma fundamental:
+   - El diseño del modelo relacional normalizado y sus 21 tablas relacionales.
+   - El principio rector de cero SQL directo desde el backend mediante Procedimientos Almacenados y Funciones en PostgreSQL 17.
+   - La modelación física de la restricción de exclusión temporal (`EXCLUDE USING gist`) para erradicar matemáticamente el *overbooking*.
+   - La arquitectura de aislamiento multi-tenant forzada a nivel de motor mediante *Row-Level Security* (RLS) y `app.clinic_id`.
+   - La topología de microservicios desacoplados con autenticación federada OIDC en Keycloak.
+   - La estrategia de invalidación quirúrgica de caché L2 en Redis y la formulación formal de las 8 invariantes del sistema.
+
+4. **Conclusión Ética:**  
+   La Inteligencia Artificial fungió como una herramienta de apoyo para aligerar la carga operativa y optimizar los tiempos de desarrollo, pero en ningún momento reemplazó el rol de los ingenieros, no tomó decisiones de diseño ni asumió la autoría del sistema. El control conceptual, analítico y técnico permaneció en todo momento bajo la plena responsabilidad y supervisión de los integrantes del equipo.
+
+---
+
+## 14. Autores y Créditos del Proyecto
 
 Este proyecto fue desarrollado para el curso de **Bases de Datos 2** por el equipo de ingeniería:
 
