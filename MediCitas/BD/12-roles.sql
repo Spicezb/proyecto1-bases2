@@ -140,6 +140,7 @@ BEGIN
                 ('consultarprofesionales', 'rol_profesional'),
                 ('consultarservicios', 'rol_profesional'),
                 ('consultarserviciosprofesional', 'rol_profesional')
+
         ) AS asignacion(nombre, rol)
             ON asignacion.nombre = p.proname
 
