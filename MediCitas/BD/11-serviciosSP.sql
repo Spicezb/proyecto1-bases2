@@ -126,7 +126,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION consultarservicios(
+CREATE OR REPLACE FUNCTION public.consultarservicios(
     p_clinicid INT,
     p_auditpersonid INT
 )
@@ -139,15 +139,17 @@ RETURNS TABLE (
     isactive BOOLEAN
 )
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1
-        FROM users
-        WHERE userid = p_auditpersonid
-          AND clinicid = p_clinicid
-          AND roleid IN (2, 3, 4)
-          AND isactive = TRUE
+        FROM public.users u
+        WHERE u.userid = p_auditpersonid
+          AND u.clinicid = p_clinicid
+          AND u.roleid IN (2, 3, 4)
+          AND u.isactive = TRUE
     ) THEN
         RAISE EXCEPTION 'Acceso denegado.';
     END IF;
@@ -160,8 +162,8 @@ BEGIN
         s.specialtyid,
         cs.duration,
         cs.isactive
-    FROM clinicservices cs
-    INNER JOIN services s
+    FROM public.clinicservices cs
+    INNER JOIN public.services s
         ON s.serviceid = cs.serviceid
     WHERE cs.clinicid = p_clinicid
     ORDER BY s.name;

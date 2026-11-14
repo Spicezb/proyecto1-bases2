@@ -367,12 +367,12 @@ AS $$
 DECLARE
     v_roleid INT;
 BEGIN
-    SELECT roleid
+    SELECT u.roleid
     INTO v_roleid
-    FROM users
-    WHERE userid = p_auditpersonid
-      AND clinicid = p_clinicid
-      AND isactive = TRUE;
+    FROM public.users u
+    WHERE u.userid = p_auditpersonid
+    AND u.clinicid = p_clinicid
+    AND u.isactive = TRUE;
 
     IF v_roleid IS NULL OR v_roleid NOT IN (2, 3, 4) THEN
         RAISE EXCEPTION 'Acceso denegado.';

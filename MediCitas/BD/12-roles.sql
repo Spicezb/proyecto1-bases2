@@ -111,6 +111,10 @@ BEGIN
                 ('contarcitasporestado', 'rol_recepcion'),
                 ('obtenerdetallecita', 'rol_recepcion'),
 
+                ('consultarprofesionales', 'rol_recepcion'),
+                ('consultarservicios', 'rol_recepcion'),
+                ('consultarserviciosprofesional', 'rol_recepcion'),
+
                 -- profesional
                 ('consultardisponibilidad', 'rol_profesional'),
                 ('consultardisponibilidadservicio', 'rol_profesional'),
@@ -132,6 +136,10 @@ BEGIN
                 ('crearnota', 'rol_profesional'),
                 ('actualizarnota', 'rol_profesional'),
                 ('consultarnota', 'rol_profesional')
+
+                ('consultarprofesionales', 'rol_profesional'),
+                ('consultarservicios', 'rol_profesional'),
+                ('consultarserviciosprofesional', 'rol_profesional'),
 
         ) AS asignacion(nombre, rol)
             ON asignacion.nombre = p.proname
