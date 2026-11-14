@@ -135,11 +135,11 @@ BEGIN
 
                 ('crearnota', 'rol_profesional'),
                 ('actualizarnota', 'rol_profesional'),
-                ('consultarnota', 'rol_profesional')
+                ('consultarnota', 'rol_profesional'),
 
                 ('consultarprofesionales', 'rol_profesional'),
                 ('consultarservicios', 'rol_profesional'),
-                ('consultarserviciosprofesional', 'rol_profesional'),
+                ('consultarserviciosprofesional', 'rol_profesional')
 
         ) AS asignacion(nombre, rol)
             ON asignacion.nombre = p.proname
