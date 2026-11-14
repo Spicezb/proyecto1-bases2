@@ -7,5 +7,8 @@ module.exports = {
     testMatch: ["**/?(*.)+(test|spec).js"],
     testPathIgnorePatterns: ["/node_modules/"],
     clearMocks: true,
-    verbose: true
+    verbose: false,
+    reporters: [
+        ["<rootDir>/reporter.js", {}]
+    ]
 };

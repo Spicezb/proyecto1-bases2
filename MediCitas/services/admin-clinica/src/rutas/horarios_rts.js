@@ -111,7 +111,10 @@ router.post('/', autorizarRoles(['administrador de clínica', 'profesional de sa
 
         if (
             error.code === '23P01' ||
-            (error.message && error.message.includes('excludeprofessionalschedules'))
+            (error.message && (
+                error.message.includes('excludeprofessionalschedules') ||
+                error.message.includes('exclusion constraint')
+            ))
         ) {
             return res.status(409).json({
                 status: 'error',
@@ -182,7 +185,10 @@ router.put('/:id', autorizarRoles(['administrador de clínica', 'profesional de 
 
         if (
             error.code === '23P01' ||
-            (error.message && error.message.includes('excludeprofessionalschedules'))
+            (error.message && (
+                error.message.includes('excludeprofessionalschedules') ||
+                error.message.includes('exclusion constraint')
+            ))
         ) {
             return res.status(409).json({
                 status: 'error',

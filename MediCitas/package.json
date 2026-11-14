@@ -2,6 +2,16 @@
   "name": "medicitas",
   "private": true,
   "scripts": {
-    "test": "node scripts/test.js"
+    "test": "node scripts/test.js",
+    "test:concurrencia": "node pruebas/integracion/concurrencia.js",
+    "test:gateway": "node pruebas/integracion/gateway.js",
+    "test:auth": "node pruebas/integracion/auth.js",
+    "test:aislamiento": "node pruebas/integracion/aislamiento.js",
+    "test:invariantes": "node pruebas/integracion/invariantes.js",
+    "test:usuarios": "node pruebas/unitarias/usuarios.js",
+    "test:clinicas": "node pruebas/unitarias/clinicas.js",
+    "test:agenda": "node pruebas/unitarias/agenda.js",
+    "test:servicios": "node pruebas/unitarias/servicios-profesionales.js",
+    "test:citas": "node pruebas/unitarias/citas.js"
   }
 }

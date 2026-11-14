@@ -30,12 +30,14 @@ router.post('/', autorizarRoles(['recepción', 'administrador de clínica']), as
             error.code === '23P01' ||
             (error.message && (
                 error.message.includes('no está disponible') ||
+                error.message.includes('exclusion constraint') ||
+                error.message.includes('excludecitas') ||
                 error.message.includes('excludeappointments')
             ))
         ) {
             return res.status(409).json({
                 status: 'error',
-                message: error.message || 'El espacio solicitado no está disponible o ya fue reservado.'
+                message: 'El espacio solicitado no está disponible o ya fue reservado.'
             });
         }
 
@@ -95,12 +97,14 @@ router.put('/:id/reprogramar', autorizarRoles(['recepción', 'administrador de c
             error.code === '23P01' ||
             (error.message && (
                 error.message.includes('no está disponible') ||
+                error.message.includes('exclusion constraint') ||
+                error.message.includes('excludecitas') ||
                 error.message.includes('excludeappointments')
             ))
         ) {
             return res.status(409).json({
                 status: 'error',
-                message: error.message || 'El nuevo espacio solicitado no está disponible.'
+                message: 'El nuevo espacio solicitado no está disponible.'
             });
         }
 
