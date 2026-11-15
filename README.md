@@ -1191,6 +1191,6 @@ En cumplimiento con los más altos estándares de integridad académica, transpa
 
 Este proyecto fue desarrollado para el curso de **Bases de Datos 2** por el equipo de ingeniería:
 
-- **Andrés Campos Montero** (andrescamposm2007@gmail.com)
+- **Andrés Campos Montero** (Andr3s_Camp0s / andrescamposm2007@gmail.com)
 - **Sebastián Aguilar** (aguilarvss / sebastianaguilar1407@gmail.com)
 - **Xavier Cruz** (Spicezb / xaviccr@gmail.com)
